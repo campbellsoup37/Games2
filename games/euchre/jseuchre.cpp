@@ -35,7 +35,7 @@ void JsEuchreCore<CoreType, className>::Init(v8::Local<v8::Object> exports) {
 
     // Prepare constructor template
     v8::Local<v8::FunctionTemplate> tpl = v8::FunctionTemplate::New(isolate, New, addon_data);
-    tpl->SetClassName(v8::String::NewFromUtf8(isolate, className.c_str()).ToLocalChecked());
+    tpl->SetClassName(v8::String::NewFromUtf8(isolate, className.c_str()));
     tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
     // Prototype
@@ -45,7 +45,7 @@ void JsEuchreCore<CoreType, className>::Init(v8::Local<v8::Object> exports) {
 
     v8::Local<v8::Function> constructor = tpl->GetFunction(context).ToLocalChecked();
     addon_data->SetInternalField(0, constructor);
-    exports->Set(context, v8::String::NewFromUtf8(isolate, className.c_str()).ToLocalChecked(), constructor).FromJust();
+    exports->Set(context, v8::String::NewFromUtf8(isolate, className.c_str()), constructor).FromJust();
 }
 
 template<typename CoreType, std::string& className>
@@ -106,17 +106,17 @@ void JsEuchreCore<CoreType, className>::deal(const v8::FunctionCallbackInfo<v8::
         }
         hands->Set(context, i, hand);
     }
-    ret->Set(context, v8::String::NewFromUtf8(isolate, "hands").ToLocalChecked(), hands);
+    ret->Set(context, v8::String::NewFromUtf8(isolate, "hands"), hands);
 
     // up card
-    ret->Set(context, v8::String::NewFromUtf8(isolate, "upCard").ToLocalChecked(), v8::Number::New(isolate, obj->core->upCard.code));
+    ret->Set(context, v8::String::NewFromUtf8(isolate, "upCard"), v8::Number::New(isolate, obj->core->upCard.code));
 
     // dealer
     int dealer = obj->core->roundNumber % obj->core->config.N;
-    ret->Set(context, v8::String::NewFromUtf8(isolate, "dealer").ToLocalChecked(), v8::Number::New(isolate, dealer));
+    ret->Set(context, v8::String::NewFromUtf8(isolate, "dealer"), v8::Number::New(isolate, dealer));
 
     // leader
-    ret->Set(context, v8::String::NewFromUtf8(isolate, "leader").ToLocalChecked(), v8::Number::New(isolate, obj->core->leader));
+    ret->Set(context, v8::String::NewFromUtf8(isolate, "leader"), v8::Number::New(isolate, obj->core->leader));
 
     args.GetReturnValue().Set(ret);
 }

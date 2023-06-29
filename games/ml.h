@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <list>
 #include <map>
 #include <memory>
@@ -57,7 +58,7 @@ public:
 
 class FeatureOneHot : public Feature {
 public:
-	FeatureOneHot(SparseVector& vec, std::string name, int max, int min = 0) : Feature(vec, name, max - min), value(min), position(-1), min(min) {}
+	FeatureOneHot(SparseVector& vec, std::string name, int max, int min = 0) : Feature(vec, name, max - min), min(min), value(min), position(-1) {}
 
 	void set(int newValue);
 	int get() { return value; }
