@@ -3,13 +3,10 @@
     {
       'target_name': 'euchre',
       #'cflags_cc!': [ '-fno-rtti' ],
-      #'cflags_cc+': [ '-frtti' ],
+      'cflags_cc': [ '-frtti', '-fexceptions' ],
       'include_dirs': [
         '../games',
       ],
-      'msvs_settings': {
-        'VCCLCompilerTool': { 'ExceptionHandling': 1, 'AdditionalOptions': [ '-std:c++20' ] }
-      },
       'sources': [
           '../games/cards.cpp', 
           '../games/euchre/core.cpp', 
@@ -26,6 +23,8 @@
                 'msvs_settings': {
                   'VCCLCompilerTool': {
                     'RuntimeTypeInfo': 'true',
+                    'ExceptionHandling': 1, 
+                    'AdditionalOptions': [ '-std:c++20' ]
                   },
                 }
               }, # Debug
@@ -33,6 +32,8 @@
                 'msvs_settings': {
                   'VCCLCompilerTool': {
                     'RuntimeTypeInfo': 'true',
+                    'ExceptionHandling': 1, 
+                    'AdditionalOptions': [ '-std:c++20' ]
                   },
                 }
               }

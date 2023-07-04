@@ -201,7 +201,7 @@ class EuchreCoreMarkovWorkshop:
             # Save to web
             if groups_per_save_to_web > 0 and (f + 1) % groups_per_save_to_web == 0:
                 print('Saving to web...')
-                self.models.save_to_web(self.web_dir)
+                self.models.save_for_web(self.web_dir)
 
         for runner in self.runners:
             runner.end()

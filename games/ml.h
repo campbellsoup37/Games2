@@ -137,7 +137,7 @@ public:
 			throw std::runtime_error(ss.str());
 		}
 
-		if (vec.size() != M[0].size()) {
+		if (vec.size() != (int)M[0].size()) {
 			std::stringstream ss;
 			ss << source << ": evaluating layer -- SparseVector size " << vec.size() << ", M size " << M.size() << "x" << M[0].size();
 			throw std::runtime_error(ss.str());
@@ -155,7 +155,7 @@ public:
 			for (int k = 0; k < (int)vec.indices.size(); k++) {
 				x += M[j][vec.indices[k][1]] * vec.values[k];
 			}
-			if (isnan(x)) {
+			if (std::isnan(x)) {
 				std::cout << source << ": evaluating layer -- entry " << j << " is nan";
 			}
 			out->push_back(x);
@@ -189,7 +189,7 @@ public:
 			for (int i = 0; i < (int)M[0].size(); i++) {
 				x += M[j][i] * vec[i];
 			}
-			if (isnan(x)) {
+			if (std::isnan(x)) {
 				std::cout << source << ": evaluating layer -- entry " << j << " is nan";
 			}
 			out->push_back(x);
