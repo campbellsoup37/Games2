@@ -12,13 +12,13 @@ from tools import hdf5
 euchre_dir = 'C:/Users/campb/data/euchre'
 
 class EuchreCoreMarkovWorkshop:
-    def __init__(self, stickTheDealer=True, log_rule=None, iter=None, max_rounds=0, load=True):
+    def __init__(self, stickTheDealer=True, log_rule=None, iter=None, max_rounds=0, load=True, seed=None):
         iter = iter or 'base'
         self.iter = iter
         self.load = load
         self.models = None
         
-        seed = int(time.time())
+        seed = seed or int(time.time())
         self.configArgs = [stickTheDealer, max_rounds, seed]
         self.config = EuchreConfig(*self.configArgs)
         
@@ -67,6 +67,10 @@ class EuchreCoreMarkovWorkshop:
         return f'{self.base_dir}/models'
 
     @property
+    def web_dir(self):
+        return f'{sys.prefix}/../web/models/euchre'
+
+    @property
     def history_fname(self):
         return f'{self.base_dir}/history.h5'
 
@@ -100,6 +104,7 @@ class EuchreCoreMarkovWorkshop:
         batch_size=None, 
         greeds=None, 
         save=False, 
+        groups_per_save_to_web=0, 
         num_processes=1
     ):
         if game_log or evaluation_log:
@@ -192,6 +197,11 @@ class EuchreCoreMarkovWorkshop:
             if save and groups_per_evaluation_data > 0 and (f + 1) % groups_per_evaluation_data == 0:
                 print('Evaluating data...')
                 self.models.evaluate_data(self.history_fname)
+
+            # Save to web
+            if groups_per_save_to_web > 0 and (f + 1) % groups_per_save_to_web == 0:
+                print('Saving to web...')
+                self.models.save_to_web(self.web_dir)
 
         for runner in self.runners:
             runner.end()

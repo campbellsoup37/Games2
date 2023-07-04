@@ -9,6 +9,8 @@ import { ClientStateOhHell, ClientStateOhHellPreGame, ClientStateOhHellBidding, 
 
 import { ClientStateHearts, ClientStateHeartsPreGame, ClientStateHeartsPassing, ClientStateHeartsPlaying, ClientStateHeartsPostGame } from './modes/hearts.js'
 
+import { ClientStateEuchre, ClientStateEuchrePreGame, ClientStateEuchreTrump, ClientStateEuchreDiscard, ClientStateEuchrePlaying, ClientStateEuchrePostGame } from './modes/euchre.js'
+
 var ClientStateEnum = {
     LOADING: ClientStateLoading,
     LOGIN_MENU: ClientStateLoginMenu,
@@ -25,7 +27,14 @@ var ClientStateEnum = {
     HEARTS_PREGAME: ClientStateHeartsPreGame,
     HEARTS_PASSING: ClientStateHeartsPassing,
     HEARTS_PLAYING: ClientStateHeartsPlaying,
-    HEARTS_POSTGAME: ClientStateHeartsPostGame
+    HEARTS_POSTGAME: ClientStateHeartsPostGame,
+
+    EUCHRE_BASE: ClientStateEuchre,
+    EUCHRE_PREGAME: ClientStateEuchrePreGame,
+    EUCHRE_TRUMP: ClientStateEuchreTrump,
+    EUCHRE_DISCARD: ClientStateEuchreDiscard,
+    EUCHRE_PLAYING: ClientStateEuchrePlaying,
+    EUCHRE_POSTGAME: ClientStateEuchrePostGame,
 }
 
 class Client {
@@ -100,6 +109,7 @@ class Client {
         this.vars.animationTime = 150
         this.vars.bidStayTime = 1500
         this.vars.trickStayTime = 1500
+        this.vars.phaseChangeTime = 1000
         this.vars.messageTime = 2000
         this.vars.robotDelay = 500
     }
@@ -216,28 +226,14 @@ function setCookie(cname, cvalue, exdays) {
     document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
 }
 
-// Out
-
-function makePass(cards) {
-    socket.emit('pass', {cards: cards.map(c => c.toDict())});
-}
-function makeClaim() {
-    socket.emit('claim');
-}
-function respondToClaim(accept) {
-    socket.emit('claimresponse', accept);
-}
-function makeDecision(index) {
-    socket.emit('decision', {name: decision.name, choice: index});
-}
-
 // debug
 function debugExecute() {
-     client.vars.animationTime = 1
-     client.vars.bidStayTime = 0
-     client.vars.trickStayTime = 0
-     client.vars.messageTime = 0
-     client.vars.robotDelay = 0
+     //client.vars.animationTime = 1
+     //client.vars.bidStayTime = 0
+     //client.vars.trickStayTime = 0
+     //client.vars.phaseChangeTime = 0
+     //client.vars.messageTime = 0
+     //client.vars.robotDelay = 0
 }
 
 function debugConnected() {

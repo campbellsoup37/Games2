@@ -21,7 +21,7 @@ public:
 	void erase(int position);
 	void set(int position, int index, double value);
 
-	int size();
+	int size() const;
 	void addSize(int d);
 
 	void log(Log& logger);
@@ -119,17 +119,44 @@ public:
 	Layer(std::string activation) {
 		if (activation == "relu") {
 			act = std::make_shared<ReLU>();
-		} else if (activation == "softmax") {
+		}
+		else if (activation == "softmax") {
 			act = std::make_shared<Softmax>();
+		}
+		else {
+			std::stringstream ss;
+			ss << "invalid activation function \"" << activation << "\"";
+			throw std::invalid_argument(ss.str());
 		}
 	}
 
-	std::shared_ptr<std::vector<double>> operator()(const SparseVector& vec) {
+	std::shared_ptr<std::vector<double>> operator()(const SparseVector& vec, const std::string& source = "") {
+		if (M.size() == 0) {
+			std::stringstream ss;
+			ss << source << ": evaluating layer -- empty M.";
+			throw std::runtime_error(ss.str());
+		}
+
+		if (vec.size() != M[0].size()) {
+			std::stringstream ss;
+			ss << source << ": evaluating layer -- SparseVector size " << vec.size() << ", M size " << M.size() << "x" << M[0].size();
+			throw std::runtime_error(ss.str());
+		}
+
+		if (b.size() != M.size()) {
+			std::stringstream ss;
+			ss << source << ": evaluating layer -- M size " << M.size() << "x" << M[0].size() << ", b size " << b.size();
+			throw std::runtime_error(ss.str());
+		}
+
 		std::shared_ptr<std::vector<double>> out = std::make_shared<std::vector<double>>();
 		for (int j = 0; j < (int)M.size(); j++) {
 			double x = b[j];
 			for (int k = 0; k < (int)vec.indices.size(); k++) {
 				x += M[j][vec.indices[k][1]] * vec.values[k];
+			}
+			if (isnan(x)) {
+				std::cout << source << ": evaluating layer -- entry " << j << " is nan";
 			}
 			out->push_back(x);
 		}
@@ -137,12 +164,33 @@ public:
 		return out;
 	}
 
-	std::shared_ptr<std::vector<double>> operator()(const std::vector<double>& vec) {
+	std::shared_ptr<std::vector<double>> operator()(const std::vector<double>& vec, const std::string& source = "") {
+		if (M.size() == 0) {
+			std::stringstream ss;
+			ss << source << ": evaluating layer -- empty M.";
+			throw std::runtime_error(ss.str());
+		}
+
+		if (vec.size() != M[0].size()) {
+			std::stringstream ss;
+			ss << source << ": evaluating layer -- vector size " << vec.size() << ", M size " << M.size() << "x" << M[0].size();
+			throw std::runtime_error(ss.str());
+		}
+
+		if (b.size() != M.size()) {
+			std::stringstream ss;
+			ss << source << ": evaluating layer -- M size " << M.size() << "x" << M[0].size() << ", b size " << b.size();
+			throw std::runtime_error(ss.str());
+		}
+
 		std::shared_ptr<std::vector<double>> out = std::make_shared<std::vector<double>>();
 		for (int j = 0; j < (int)M.size(); j++) {
 			double x = b[j];
 			for (int i = 0; i < (int)M[0].size(); i++) {
 				x += M[j][i] * vec[i];
+			}
+			if (isnan(x)) {
+				std::cout << source << ": evaluating layer -- entry " << j << " is nan";
 			}
 			out->push_back(x);
 		}
@@ -157,14 +205,17 @@ public:
 
 class NeuralNetwork {
 public:
+	NeuralNetwork(const std::string& name) : name(name) {}
+
 	std::shared_ptr<std::vector<double>> operator()(const SparseVector& vec) {
-		std::shared_ptr<std::vector<double>> out = layers[0](vec);
+		std::shared_ptr<std::vector<double>> out = layers[0](vec, name);
 		for (int i = 1; i < (int)layers.size(); i++) {
-			out = layers[i](*out);
+			out = layers[i](*out, name);
 		}
 		return out;
 	}
 
+	std::string name;
 	std::vector<Layer> layers;
 	virtual std::vector<std::string> labels() { return {}; };
 };

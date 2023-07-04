@@ -161,6 +161,8 @@ public:
 
 class TNN : public NeuralNetwork {
 public:
+	TNN() : NeuralNetwork("tnn") {}
+
 	std::vector<std::string> labels() override {
 		return { "pass", "C", "C_alone", "D", "D_alone", "S", "S_alone", "H", "H_alone" };
 	}
@@ -168,7 +170,7 @@ public:
 
 class PNN : public NeuralNetwork {
 public:
-	PNN(int lowCard) : lowCard(lowCard) {}
+	PNN(int lowCard) : NeuralNetwork("pnn"), lowCard(lowCard) {}
 
 	std::vector<std::string> labels() override {
 		std::vector<std::string> ans;
@@ -186,6 +188,8 @@ public:
 
 class RNN : public NeuralNetwork {
 public:
+	RNN() : NeuralNetwork("rnn") {}
+
 	std::vector<std::string> labels() override {
 		return { "euchred", "made", "made_all" };
 	}
@@ -193,7 +197,7 @@ public:
 
 class WNN : public NeuralNetwork {
 public:
-	WNN(int N) : N(N) {}
+	WNN(int N) : NeuralNetwork("wnn"), N(N) {}
 
 	std::vector<std::string> labels() override {
 		std::vector<std::string> ans;
@@ -225,7 +229,7 @@ public:
 	void trumpChoiceApplied(int index, TrumpChoice& choice) override;
 	void playSetup() override;
 	void trickSetup() override;
-	void cardPlayed(std::shared_ptr<EuchrePlayer> player, const Card& card) override;
+	void cardPlayed(int index, const Card& card) override;
 	void scored() override;
 
 	class Undo {
@@ -264,6 +268,7 @@ public:
 		const Card& card;
 		int prevFollow;
 		bool prevShowedOut;
+		int prevPlayIndex;
 	};
 
 	class UnevaluateTrick : public Undo {
@@ -285,11 +290,10 @@ public:
 
 	std::shared_ptr<Undo> applyTrumpChoiceHypo(std::shared_ptr<EuchrePlayer> owner, int index, TrumpChoice& choice);
 	std::shared_ptr<Undo> playCardHypo(std::shared_ptr<EuchrePlayer> owner, std::shared_ptr<EuchrePlayer> player, const Card& card, int lastIndex);
-	std::shared_ptr<Undo> evaluateTrickHypo(std::shared_ptr<EuchrePlayer> owner);
 	std::shared_ptr<Undo> scoreHypo(EuchreRoundResult roundResult);
 
 	void applyTrumpChoiceForPlayerTIn(std::shared_ptr<EuchrePlayer> owner, int index, TrumpChoice& choice);
-	void playCardForPlayerPIn(std::shared_ptr<EuchrePlayer> owner, std::shared_ptr<EuchrePlayer> player, const Card& card);
+	void playCardForPlayerPIn(std::shared_ptr<EuchrePlayer> owner, std::shared_ptr<EuchrePlayer> player, const Card& card, int prevLeader);
 	void evaluateTrickForPlayerRIn(std::shared_ptr<EuchrePlayer> owner);
 
 	void logDebugDetails();
@@ -335,11 +339,13 @@ public:
 
 class EuchrePlayerMarkov : public EuchrePlayer {
 public:
-	EuchrePlayerMarkov(EuchreCore* core, int index) : EuchrePlayer(core, index), shouldLog(false) {}
+	EuchrePlayerMarkov(EuchreCore* core, int index) : EuchrePlayer(core, index), shouldLog(false), greed(1.0) {}
 
 	void chooseTrump(int phase, bool stuck) override;
 	void pickItUp() override;
 	void play(std::vector<const Card*>& canPlay) override;
+
+	double roll() { return greed == 1.0 ? 1.0 : (double)core->rng() / core->rng.max(); }
 
 	Log* log() {
 		if (shouldLog) {

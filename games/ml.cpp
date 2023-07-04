@@ -29,7 +29,7 @@ void SparseVector::set(int position, int index, double value) {
 	values[position] = value;
 }
 
-int SparseVector::size() {
+int SparseVector::size() const {
 	return denseShape[1];
 }
 

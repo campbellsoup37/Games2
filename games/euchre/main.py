@@ -27,7 +27,7 @@ def run_fit():
     print(f'Running process {process_num} with greed {process_greed}')
     workshop = euchre.EuchreCoreMarkovWorkshop(
         iter=iter,
-        log_rule=None, # lambda i: i == 1, 
+        log_rule=None,
         max_rounds=0,
         load=True # process_num > 0
     )
@@ -44,6 +44,7 @@ def run_fit():
         evaluation_size=100,
         evaluation_log=True,
         groups_per_save_data=group_count,
+        groups_per_save_to_web=group_count,
         batch_size=32,
         greeds=[process_greed] * group_count,
         num_processes=10
@@ -54,9 +55,10 @@ def run_test():
 
     workshop = euchre.EuchreCoreMarkovWorkshop(
         iter=iter,
-        log_rule = lambda i: i == 1, 
-        max_rounds=1,
+        log_rule = lambda i: False, 
+        max_rounds=0,
         load=True,
+        seed=420
     )
     workshop.run(
         group_count=1,
@@ -68,6 +70,28 @@ def run_test():
         num_processes=1,
     )
 
+def regression_test():
+    import euchre
+
+    workshop = euchre.EuchreCoreMarkovWorkshop(
+        iter=iter,
+        log_rule = lambda i: True, 
+        max_rounds=0,
+        load=True,
+        seed=420
+    )
+    workshop.run(
+        group_count=1,
+        game_log=True,
+        fit=False,
+        save=False,
+        group_size=1,
+        greeds=[1.0, 1.0, 1.0, 1.0],
+        num_processes=1,
+        groups_per_evaluation_data=1,
+        groups_per_save_data=1,
+    )
+
 if __name__ == '__main__':
     if job == 'fit' and process_loop and len(sys.argv) == 1:
         run_process_loop()
@@ -75,3 +99,5 @@ if __name__ == '__main__':
         run_fit()
     elif job == 'test':
         run_test()
+    elif job == 'regression':
+        regression_test()

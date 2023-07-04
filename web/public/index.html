@@ -106,7 +106,7 @@
         </div>
 
         <div class="fixed inset-0 flex items-center justify-center" style="display:none;" id="inGameDiv">
-            <div class="p-0 bg-white rounded-lg border-black border" id="igScoreSheetContainer">
+            <div class="p-0 bg-white rounded-lg border-black border" id="igScoreSheetContainer" style="display:none;">
                 <div class="p-0 w-full flex" id="igScoreSheetHeaderContainer">
                     <canvas class="p-0 bg-transparent" id="igScoreSheetHeaderCanvas"></canvas>
                 </div>
@@ -118,13 +118,16 @@
                     <button class="bg-white rounded-lg border border-black w-28 h-6 font-bold text-sm select-none hover:bg-gray-300" id="igSortByScore">Sort by score</button>
                 </div>
             </div>
-            <div class="p-0 bg-white rounded-lg border-black border" id="igHotdogContainer">
+            <div class="p-0 bg-white bg-opacity-50 rounded-lg border-black border" id="igScoreSheetEuchreContainer" style="display:none;">
+                <canvas class="p-0 bg-transparent" id="igScoreSheetEuchreCanvas"></canvas>
+            </div>
+            <div class="p-0 bg-white rounded-lg border-black border" id="igHotdogContainer" style="display:none;">
                 <canvas class="p-0 bg-transparent" id="igHotdogCanvas"></canvas>
             </div>
-            <div class="p-0 bg-white rounded-lg border-black border" id="igTeamInfoContainer">
+            <div class="p-0 bg-white rounded-lg border-black border" id="igTeamInfoContainer" style="display:none;">
                 <canvas class="p-0 bg-transparent" id="igTeamInfoCanvas"></canvas>
             </div>
-            <div class="p-0 bg-white rounded-lg border-black border" id="igSpreadsheetContainer">
+            <div class="p-0 bg-white rounded-lg border-black border" id="igSpreadsheetContainer" style="display:none;">
                 <canvas class="p-0 bg-transparent" id="igSpreadsheetCanvas"></canvas>
             </div>
         </div>

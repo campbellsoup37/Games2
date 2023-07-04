@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <random>
 #include <set>
@@ -117,28 +118,41 @@ public:
 	virtual void initialize();
 	virtual std::shared_ptr<EuchrePlayer> createPlayer(int index);
 
+	// Run
 	virtual void run(std::string logFilename);
+	virtual void runChooseTrump();
+	virtual void runOrderUp();
+	virtual void runPlay();
 
+	// Setup
 	virtual void gameSetup();
 	virtual void dealSetup();
 	virtual void deal();
-	virtual void chooseTrumpSetup();
-	virtual void chooseTrump();
-	virtual void applyTrumpChoice(int index, TrumpChoice& choice);
-	virtual void trumpChoiceApplied(int index, TrumpChoice& choice) {}
-	virtual void orderUp();
 	virtual void playSetup();
 	virtual void trickSetup();
-	virtual void play();
+
+	// Choose trump
+	virtual void chooseTrumpSetup();
+	virtual TrumpChoice& getTrumpChoice(int index);
+	virtual void applyTrumpChoice(int index, TrumpChoice& choice);
+	virtual void trumpChoiceApplied(int index, TrumpChoice& choice);
+
+	// Order up
+	virtual Card& getDiscard(int index);
+	virtual void discard(int index, const Card& card);
+	virtual void discarded(int index, const Card& card);
+
+	// Play
+	virtual Card& getCardPlay(int index);
+	virtual void playCard(int index, const Card& card);
+	virtual void evaluateTrick();
 	virtual void score();
+	virtual void cardPlayed(int index, const Card& card);
 	virtual void scored();
 
-	virtual void playCard(std::shared_ptr<EuchrePlayer> player, const Card& card);
-	virtual void cardPlayed(std::shared_ptr<EuchrePlayer> player, const Card& card);
-	virtual void evaluateTrick();
-
+	// Helper functions
 	virtual void whatCanIPlay(Hand& hand, std::vector<const Card*>& canPlay);
-	virtual int trickWinner(int follow);
+	virtual int trickWinner();
 
 	EuchreConfig config;
 	Log log;

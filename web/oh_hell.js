@@ -1,5 +1,6 @@
 const log = require('./logging').log
 const core = require('./core')
+var ai = require('./ai');
 var ml = require('./ml');
 
 var CoreState = {
@@ -9,10 +10,217 @@ var CoreState = {
     POSTGAME: 'OH_HELL_POSTGAME'
 }
 
+class OhHellPlayer extends core.Player {
+    constructor() {
+        super()
+        this.team = 0;
+    }
+
+    toDict(visible) {
+        return {
+            name: this.name,
+            id: this.id,
+            human: this.human,
+            host: this.host,
+            disconnected: this.disconnected,
+            replacedByRobot: this.replacedByRobot,
+            kibitzer: this.kibitzer,
+            index: this.index,
+            team: this.team,
+            bid: this.bid,
+            bidded: this.bidded,
+            taken: this.taken,
+            score: this.score,
+            hand: this.hand ? this.hand.map(c => visible ? c : new card.Card()) : [],
+            trick: this.trick,
+            played: this.played,
+            lastTrick: this.lastTrick,
+            decision: visible ? this.decision : undefined,
+            bids: this.bids,
+            scores: this.scores
+        };
+    }
+
+    toPostGameDict() {
+        return {
+            id: this.id,
+            name: this.name,
+            index: this.index,
+            team: this.team,
+            human: this.human,
+            hands: this.hands.map(h => h.map(c => c.toDict())),
+            bids: this.bids,
+            takens: this.takens,
+            scores: this.scores,
+            score: this.score,
+            plays: this.plays.map(r => r.map(c => c.toDict())),
+            wbProbs: this.wbProbs,
+            bidQs: this.bidQs,
+            makingProbs: this.makingProbs.map(r => r.map(t => t.map(pair => [pair[0].toDict(), pair[1]]))),
+            aiBids: this.aiBids,
+            diffs: this.diffs,
+            lucks: this.lucks,
+            hypoPointsLost: this.hypoPointsLost,
+            mistakes: this.mistakes
+        };
+    }
+
+    newGameReset() {
+        this.score = 0;
+        this.trick = new card.Card();
+        this.lastTrick = new card.Card();
+        this.bids = [];
+        this.takens = [];
+        this.scores = [];
+        this.hands = [];
+        this.plays = [];
+
+        this.wbProbs = [];
+        this.bidQs = [];
+        this.makingProbs = [];
+        this.aiBids = [];
+        this.diffs = [];
+        this.lucks = [];
+        this.hypoPointsLost = [];
+        this.mistakes = [];
+    }
+
+    newRoundReset() {
+        this.bid = 0;
+        this.taken = 0;
+        this.bidded = false;
+        this.trick = new card.Card();
+        this.played = false;
+        this.lastTrick = new card.Card();
+        this.acceptedClaim = false;
+        this.plays.push([]);
+        this.cardsTaken = [];
+        this.shownOut = [false, false, false, false];
+        this.hadSuit = [false, false, false, false];
+
+        this.makingProbs.push([]);
+        this.roundMistakes = 0;
+    }
+
+    addBid(bid, offset) {
+        this.bid = bid;
+        this.bidded = true;
+        this.bids.push(bid);
+
+        let qs = this.bidQs[this.bidQs.length - 1];
+        let aiBid = this.aiBids[this.aiBids.length - 1];
+        if (!offset) {
+            offset = 0;
+        }
+        this.hypoPointsLost.push(ai.pointsMean(qs, aiBid + offset) - ai.pointsMean(qs, this.bid + offset));
+    }
+
+    addPlay(card, isLead, follow) {
+        this.trick = card;
+        this.played = true;
+        for (let i = 0; i < this.hand.length; i++) {
+            if (this.hand[i].matches(card)) {
+                this.hand.splice(i, 1);
+            }
+        }
+
+        this.plays[this.plays.length - 1].push(card);
+
+        let roundProbs = this.makingProbs[this.makingProbs.length - 1];
+        let probs = roundProbs[roundProbs.length - 1];
+        let maxProb = Math.max(...probs.map(pair => pair[1]));
+        let myProb = probs.filter(pair => pair[0].matches(card))[0][1];
+        this.roundMistakes += maxProb < 0.0001 ? 0 : Math.min(maxProb / myProb - 1, 1);
+
+        this.hadSuit[card.suit] = true
+        if (!isLead && card.suit != follow) {
+            this.shownOut[follow] = true
+        }
+    }
+
+    voidDealt(suit) {
+        return this.shownOut[suit] && !this.hadSuit[suit];
+    }
+
+    addWbProb(p) {
+        this.wbProbs.push(p);
+    }
+
+    startBid(data) {
+        if (data.turn == this.index && !this.kibitzer) {
+            this.bidAsync();
+        }
+    }
+
+    async bidAsync() {
+        let bid = await this.strategyModule.makeBid();
+        this.bidReady(bid);
+    }
+
+    startPlay(data) {
+        if (data.turn == this.index && !this.kibitzer) {
+            this.playAsync();
+        }
+    }
+
+    async playAsync() {
+        let card = await this.strategyModule.makePlay();
+        this.playReady(card);
+    }
+
+    startDecision(data) {
+        if (!this.kibitzer) {
+            this.decision = data;
+            this.decisionAsync(data);
+        }
+    }
+
+    async decisionAsync(data) {
+        let choice = await this.strategyModule.makeDecision(data);
+        this.decisionReady(choice);
+    }
+
+    addQs(qs) {
+        this.bidQs.push(qs);
+    }
+
+    addAiBid(bid) {
+        this.aiBids.push(bid);
+    }
+
+    addMakingProbs(probs) {
+        this.makingProbs[this.makingProbs.length - 1].push(probs);
+    }
+
+    addDiff(diff) {
+        this.diffs.push(diff);
+    }
+
+    addLuck(luck) {
+        this.lucks.push(luck);
+    }
+}
+
+class OhHellHumanPlayer extends core.createHumanPlayer(OhHellPlayer) {
+    constructor(user, core) { super(user, core) }
+}
+
+class OhHellAiPlayer extends core.createAiPlayer(OhHellPlayer) {
+    constructor(number, core) { super(number, core) }
+}
+
 class OhHellCore extends core.Core {
     constructor(players, game, options) {
         super(players, game, options)
         this.state = CoreState.PREGAME
+    }
+
+    createHumanPlayer(user) {
+        return new OhHellHumanPlayer(user, this)
+    }
+
+    createAiPlayer(number) {
+        return new OhHellAiPlayer(number, this)
     }
 
     isInGame() {
@@ -148,7 +356,7 @@ class OhHellCore extends core.Core {
         let data = { canPlay: undefined, ss: this.spreadsheet && this.rounds[this.roundNumber].handSize == 1 ? this.spreadsheet[bidI] : undefined };
         if (this.players.allHaveBid()) {
             this.state = CoreState.PLAYING
-            this.trickOrder = new TrickOrder(this.trump.suit)
+            this.trickOrder = new core.TrickOrder(this.trump.suit)
             let canPlay = this.whatCanIPlay(this.turn)
             data.canPlay = canPlay
             choices.canPlay = canPlay
@@ -227,9 +435,11 @@ class OhHellCore extends core.Core {
             this.leaders[this.leaders.length - 1].push(this.leader);
             this.leader = this.turn;
             this.players.trickWinner(this.turn);
-            this.trickOrder = new TrickOrder(this.trump.suit);
+            this.trickOrder = new core.TrickOrder(this.trump.suit);
             this.playNumber++;
 
+            this.addUpdateDiff({}, { trickWinner: this.leader })
+            this.flushDiffs()
             this.addUpdateDiff(
                 {
                     leader: this.leader,
@@ -239,8 +449,7 @@ class OhHellCore extends core.Core {
                         played: p.played,
                         taken: p.taken
                     }))
-                },
-                { trickWinner: this.leader }
+                }
             )
             this.flushDiffs()
 
@@ -510,63 +719,24 @@ class OhHellCore extends core.Core {
     enableClaimRequest() {
         return this.state == CoreState.PLAYING && this.claimer === undefined
     }
-}
 
-class TrickOrder {
-    constructor(trump) {
-        this.order = [];
-        this.trump = trump;
-        this.led = -1;
-        this.leader = undefined;
-    }
-
-    copy() {
-        let ans = new TrickOrder(this.trump);
-        ans.led = this.led;
-        ans.leader = this.leader;
-        ans.order = this.order.map(e => e);
-        return ans;
-    }
-
-    getLed() {
-        return this.led;
-    }
-
-    push(card, index) {
-        let entry = { card: card, index: index };
-
-        if (this.led == -1) {
-            this.order.push(entry);
-            this.led = card.suit;
-            this.leader = index;
-            return;
+    claimAccepted() {
+        let winner = this.players.players[this.claimer];
+        let remaining = winner.hand.length;
+        if (!winner.trick.isEmpty()) {
+            remaining++
         }
 
-        if (card.suit != this.led && card.suit != this.trump) {
-            return;
-        }
+        winner.taken += remaining
 
-        for (let i = 0; i < this.order.length; i++) {
-            let comp = card.comp(this.order[i].card, this.trump, this.led);
-            if (comp < 0) {
-                continue;
-            } else if (comp > 0) {
-                this.order.splice(i, 0, entry);
-                return;
-            } else {
-                this.order.splice(i, 1);
-                return;
-            }
-        }
-        this.order.push(entry);
-    }
+        let updateDiff = { players: this.players.players.map(p => ({ hand: [], trick: new card.Card() })) }
+        updateDiff.players[this.claimer].taken = winner.taken
+        this.addUpdateDiff(updateDiff)
+        this.flushDiffs()
 
-    getWinner() {
-        if (this.order.length == 0) {
-            return this.leader;
-        } else {
-            return this.order[0].index;
-        }
+        this.players.emitAll('claimresult', { accepted: true, claimer: this.claimer, remaining: remaining });
+
+        this.finishRound();
     }
 }
 

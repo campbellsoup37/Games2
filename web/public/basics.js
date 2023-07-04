@@ -63,32 +63,3 @@ export class Card {
         return this.num == card.num && this.suit == card.suit;
     }
 }
-
-export class Pass {
-    constructor() {
-        this.clear();
-        this.toPass = [0, 0, 0, 4, 3, 2, 2, 2, 1][players.length];
-    }
-
-    clear() {
-        this.list = [];
-        this.set = new Set();
-    }
-
-    deselect(card) {
-        this.list = this.list.filter(c => c !== card);
-        this.set.delete(card);
-    }
-
-    select(card) {
-        while (this.list.length >= this.toPass) {
-            this.deselect(this.list[0]);
-        }
-        this.list.push(card);
-        this.set.add(card);
-    }
-
-    isSelected(card) {
-        return this.set.has(card);
-    }
-}

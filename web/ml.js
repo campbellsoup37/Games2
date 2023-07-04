@@ -517,6 +517,9 @@ class NNModel {
         for (let i = 0; i < afs.length; i++) {
             this.layers[i + 1].setActivationFunction(this.getActivationFunction(afs[i]));
         }
+
+        let stats = fs.statSync(path)
+        this.mtime = stats.mtime
     }
 
     getActivationFunction(name) {

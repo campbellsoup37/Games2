@@ -30,7 +30,9 @@ class Player {
             lastTrick: this.lastTrick,
             decision: visible ? this.decision : undefined,
             bids: this.bids,
-            scores: this.scores
+            scores: this.scores,
+            pass: this.pass ? this.pass.map(c => visible ? c : new card.Card()) : [],
+            passed: this.passed
         };
     }
 
@@ -132,12 +134,6 @@ class Player {
         }
 
         this.plays[this.plays.length - 1].push(card);
-
-        let roundProbs = this.makingProbs[this.makingProbs.length - 1];
-        let probs = roundProbs[roundProbs.length - 1];
-        let maxProb = Math.max(...probs.map(pair => pair[1]));
-        let myProb = probs.filter(pair => pair[0].matches(card))[0][1];
-        this.roundMistakes += maxProb < 0.0001 ? 0 : Math.min(maxProb / myProb - 1, 1);
     }
 
     addPass(cards) {
@@ -146,7 +142,7 @@ class Player {
         this.passes.push(cards);
     }
 
-    incTaken() {
+    incTaken(cards) {
         this.taken++;
     }
 
@@ -262,6 +258,212 @@ class Player {
     commandTrickWinner(data) { }
 }
 
+function createHumanPlayer(base) {
+    class HumanPlayer extends base {
+        constructor(user, core, ...args) {
+            super(...args)
+            this.user = user;
+            this.core = core;
+            this.id = user.id;
+            this.disconnected = false;
+            this.human = true;
+        }
+
+        reconnect(user) { // TODO fix this
+            if (this.user.socket.connected && this.user.socket !== user.socket) {
+                this.user.send('kick');
+            }
+
+            this.user = user;
+            user.player = this;
+        }
+
+        commandJoin(data) {
+            this.user.send('join', data);
+        }
+
+        commandGameState(data) {
+            this.user.send('gamestate', data);
+        }
+
+        flushDiffs(data) {
+            this.user.send('gamestate', data);
+        }
+
+        commandAddPlayers(data) {
+            this.user.send('addplayers', data);
+        }
+
+        commandRemovePlayers(data) {
+            this.user.send('removeplayers', data);
+        }
+
+        commandUpdatePlayers(data) {
+            this.user.send('updateplayers', data);
+        }
+
+        commandUpdateTeams(data) {
+            this.user.send('updateteams', data);
+        }
+
+        commandStart() {
+            this.user.send('start');
+        }
+
+        commandDeal(data) {
+            if (this.kibitzer) {
+                this.user.send('deal', data);
+            } else {
+                this.user.send('deal', {
+                    hands: data.hands.map((h, i) => h.map(c => i == this.index ? c : { num: 0, suit: 0 })),
+                    trump: data.trump
+                });
+            }
+        }
+
+        updateHands(data) {
+            if (this.kibitzer) {
+                this.user.send('performpass', data);
+            } else {
+                this.user.send('performpass', {
+                    hands: data.hands.map((h, i) => h.map(c => i == this.index ? c : { num: 0, suit: 0 })),
+                    pass: data.pass.map((h, i) => h.map(c => i == this.index || data.passedTo[i] == this.index ? c : { num: 0, suit: 0 })),
+                    passedTo: data.passedTo
+                });
+            }
+        }
+
+        commandBid(data) {
+            this.user.send('bid', data);
+        }
+
+        commandPlay(data) {
+            this.user.send('play', data);
+        }
+
+        commandPass(data) {
+            this.user.send('pass', data);
+        }
+
+        commandDecision(data) {
+            //this.user.send('decision', data);
+        }
+
+        commandPassReport(data) {
+            let copy = data.cards.map(c => data.index == this.index || this.kibitzer ? c : new card.Card());
+            this.user.send('passreport', { index: data.index, cards: copy });
+        }
+
+        commandTrickWinner(data) {
+            this.user.send('trickwinner', data);
+        }
+
+        setDisconnected(disc) {
+            this.disconnected = disc;
+            if (!disc) {
+                this.replacedByRobot = false;
+            }
+        }
+
+        replaceWithRobot() {
+            this.replacedByRobot = true;
+            if (this.readiedBid !== undefined) {
+                this.core.incomingBid(this.index, this.readiedBid);
+                this.readiedBid = undefined;
+            } else if (this.readiedPlay !== undefined) {
+                this.core.incomingPlay(this.index, this.readiedPlay);
+                this.readiedPlay = undefined;
+            } else if (this.readiedPass !== undefined) {
+                this.core.incomingPass(this.index, this.readiedPass);
+                this.readiedPass = undefined;
+            } else if (this.readiedDecision !== undefined) {
+                this.core.makeDecision(this.index, this.readiedDecision);
+                this.readiedDecision = undefined;
+            }
+        }
+
+        bidReady(bid) {
+            if (this.replacedByRobot) {
+                this.core.incomingBid(this.index, bid);
+                this.readiedBid = undefined;
+            } else {
+                this.readiedBid = bid;
+            }
+        }
+
+        playReady(card) {
+            if (this.replacedByRobot) {
+                this.core.incomingPlay(this.index, card);
+                this.readiedPlay = undefined;
+            } else {
+                this.readiedPlay = card;
+            }
+        }
+
+        passReady(cards) {
+            if (this.replacedByRobot) {
+                this.core.incomingPass(this.index, cards);
+                this.readiedPass = undefined;
+            } else {
+                this.readiedPass = cards;
+            }
+        }
+
+        decisionReady(choice) {
+            if (this.replacedByRobot) {
+                this.core.makeDecision(this.index, choice);
+                this.readiedDecision = undefined;
+            } else {
+                this.readiedDecision = choice;
+            }
+        }
+
+        poke() {
+            this.user.send('poke');
+        }
+
+        removeDecision() {
+            this.decision = undefined;
+            //this.user.send('removedecision');
+        }
+    }
+    return HumanPlayer
+}
+
+function createAiPlayer(base) {
+    class AiPlayer extends base {
+        constructor(i, core, ...args) {
+            super(...args)
+            this.disconnected = false;
+            this.human = false;
+            this.id = '@robot' + i;
+            this.name = ai.robotNames[Math.floor(ai.robotNames.length * Math.random())] + ' bot'
+            this.core = core;
+        }
+
+        bidReady(bid) {
+            this.core.incomingBid(this.index, bid);
+        }
+
+        playReady(card) {
+            this.core.incomingPlay(this.index, card);
+        }
+
+        passReady(cards) {
+            this.core.incomingPass(this.index, cards);
+        }
+
+        decisionReady(choice) {
+            this.core.makeDecision(this.index, choice);
+        }
+
+        removeDecision() {
+            this.decision = undefined;
+        }
+    }
+    return AiPlayer
+}
+
 class PlayersList {
     constructor(game) {
         this.game = game;
@@ -348,7 +550,8 @@ class PlayersList {
         if (robots.length < count) {
             let newRobots = []
             for (let i = robots.length; i < count; i++) {
-                newRobots.push(new AiPlayer(i + 1, this.core))
+                //newRobots.push(new AiPlayer(i + 1, this.core))
+                newRobots.push(this.core.createAiPlayer(i + 1))
             }
             this.addPlayers(newRobots, [])
         } else if (robots.length > count) {
@@ -601,22 +804,18 @@ class PlayersList {
     }
 
     playReport(index, card, isLead, follow) {
-        this.players[index].addPlay(card);
-        this.players[index].hadSuit[card.suit] = true;
-        if (!isLead && card.suit != follow) {
-            this.players[index].shownOut[follow] = true;
-        }
+        this.players[index].addPlay(card, isLead, follow);
         //this.emitAll('playreport', {index: index, card: {num: card.num, suit: card.suit}, human: this.players[index].human, isLead: isLead});
     }
 
     passReport(index, cards) {
         this.players[index].addPass(cards);
-        for (const player of this.players) {
-            player.commandPassReport({ index: index, cards: cards });
-        }
-        for (const kibitzer of this.kibitzers) {
-            kibitzer.commandPassReport({ index: index, cards: cards });
-        }
+        //for (const player of this.players) {
+        //    player.commandPassReport({ index: index, cards: cards });
+        //}
+        //for (const kibitzer of this.kibitzers) {
+        //    kibitzer.commandPassReport({ index: index, cards: cards });
+        //}
     }
 
     allHaveBid() {
@@ -632,8 +831,7 @@ class PlayersList {
     }
 
     trickWinner(index) {
-        this.players[index].incTaken();
-        this.players[index].cardsTaken.push(...this.players.map(p => p.trick));
+        this.players[index].incTaken(this.players.map(p => p.trick))
 
         for (const player of this.players) {
             player.newTrickReset();
@@ -653,11 +851,11 @@ class PlayersList {
             player.addScore(score);
             newScores.push(player.score);
 
-            player.mistakes.push(player.roundMistakes);
-
-            if (this.game.mode == 'Hearts') { //TODO
+            if (this.game.mode != 'Oh Hell') { //TODO
                 continue;
             }
+
+            player.mistakes.push(player.roundMistakes);
 
             let qs = player.bidQs[player.bidQs.length - 1];
             let mu = ai.pointsMean(qs, player.bid);
@@ -672,31 +870,52 @@ class PlayersList {
     }
 
     performPass(offset) {
-        let pass = new Array(this.players.length).fill([]);
-        let passedTo = new Array(this.players.length).fill(-1);
+        let passedTo = new Array(this.players.length).fill(-1)
         for (const player of this.players) {
             if (player.pass.length == 0) {
                 continue;
             }
-            let i = (player.index + offset + this.players.length) % this.players.length;
+            let i = (player.index + offset + this.players.length) % this.players.length
             while (i != player.index) {
                 if (this.players[i].pass.length > 0) {
-                    player.hand = player.hand.filter(c1 => player.pass.filter(c2 => c2.matches(c1)).length == 0);
-                    this.players[i].hand.push(...player.pass);
-                    this.players[i].hand.sort((c1, c2) => c1.compSort(c2));
-                    pass[player.index] = player.pass.map(c => c.toDict());
+                    this.players[i].hand.push(...player.pass)
+                    this.players[i].hand.sort((c1, c2) => c1.compSort(c2))
                     passedTo[player.index] = i;
                     break;
                 }
                 i = (i + offset + this.players.length) % this.players.length;
             }
         }
-        let hands = this.players.map(p => p.hand.map(c => c.toDict()));
-        for (const player of this.players) {
-            player.updateHands({ hands: hands, pass: pass, passedTo: passedTo });
-        }
-        for (const kibitzer of this.kibitzers) {
-            kibitzer.updateHands({ hands: hands, pass: pass, passedTo: passedTo });
+
+        for (let player of this.players.concat(this.kibitzers)) {
+            this.core.addUpdateDiff(
+                {
+                    players: this.players.map(p => ({
+                        passedTo: passedTo[p.index],
+                        pass: player.index == passedTo[p.index] ? p.pass : undefined
+                    }))
+                },
+                { performPass: true }
+            )
+            this.core.flushDiffs([player])
+
+            if (!player.kibitzer && player.pass.length == 0) {
+                continue
+            }
+
+            let removeDiff = { players: {} }
+            for (let p of this.players) {
+                removeDiff.players[p.index] = ['hand']
+            }
+            this.core.addRemoveDiff(removeDiff)
+            this.core.addUpdateDiff(
+                {
+                    players: this.players.map(p => ({
+                        hand: player.index == p.index || player.kibitzer ? p.hand : p.hand.map(c => new card.Card())
+                    }))
+                }
+            )
+            this.core.flushDiffs([player])
         }
     }
 
@@ -717,8 +936,18 @@ class PlayersList {
         this.emitAll('postgame', coreData);
     }
 
-    sendChat(index, text) {
-        this.emitAll('chat', { sender: this.players[index].name, text: text });
+    sendChat(index, text, recipient) {
+        let sender
+        if (index === undefined) {
+            sender = 'System'
+        } else {
+            sender = this.players[index].name
+        }
+        if (recipient === undefined) {
+            this.emitAll('chat', { sender: sender, text: text })
+        } else {
+            this.players[recipient].emit('chat', { sender: sender, text: text })
+        }
     }
 
     sendEndGameRequest(index) {
@@ -786,20 +1015,6 @@ class PlayersList {
                 this.core.flushDiffs([player])
             }
 
-            let winner = this.players[this.core.claimer];
-            let remaining = winner.hand.length;
-            if (!winner.trick.isEmpty()) {
-                remaining++;
-            }
-
-            winner.taken += remaining;
-
-            let updateDiff = { players: this.players.map(p => ({ hand: [], trick: new card.Card() })) }
-            updateDiff.players[this.core.claimer].taken = winner.taken
-            this.core.addUpdateDiff(updateDiff)
-            this.core.flushDiffs()
-
-            this.emitAll('claimresult', { accepted: true, claimer: this.core.claimer, remaining: remaining });
             this.core.acceptClaim();
         }
     }
@@ -871,206 +1086,6 @@ class PlayersList {
                 player.flushDiffs(this.core.diffs)
             }
         }
-    }
-}
-
-class HumanPlayer extends Player {
-    constructor(user, core) {
-        super();
-        this.user = user;
-        this.core = core;
-        this.id = user.id;
-        this.disconnected = false;
-        this.human = true;
-    }
-
-    reconnect(user) { // TODO fix this
-        if (this.user.socket.connected && this.user.socket !== user.socket) {
-            this.user.send('kick');
-        }
-
-        this.user = user;
-        user.player = this;
-    }
-
-    commandJoin(data) {
-        this.user.send('join', data);
-    }
-
-    commandGameState(data) {
-        this.user.send('gamestate', data);
-    }
-
-    flushDiffs(data) {
-        this.user.send('gamestate', data);
-    }
-
-    commandAddPlayers(data) {
-        this.user.send('addplayers', data);
-    }
-
-    commandRemovePlayers(data) {
-        this.user.send('removeplayers', data);
-    }
-
-    commandUpdatePlayers(data) {
-        this.user.send('updateplayers', data);
-    }
-
-    commandUpdateTeams(data) {
-        this.user.send('updateteams', data);
-    }
-
-    commandStart() {
-        this.user.send('start');
-    }
-
-    commandDeal(data) {
-        if (this.kibitzer) {
-            this.user.send('deal', data);
-        } else {
-            this.user.send('deal', {
-                hands: data.hands.map((h, i) => h.map(c => i == this.index ? c : { num: 0, suit: 0 })),
-                trump: data.trump
-            });
-        }
-    }
-
-    updateHands(data) {
-        if (this.kibitzer) {
-            this.user.send('performpass', data);
-        } else {
-            this.user.send('performpass', {
-                hands: data.hands.map((h, i) => h.map(c => i == this.index ? c : { num: 0, suit: 0 })),
-                pass: data.pass.map((h, i) => h.map(c => i == this.index || data.passedTo[i] == this.index ? c : { num: 0, suit: 0 })),
-                passedTo: data.passedTo
-            });
-        }
-    }
-
-    commandBid(data) {
-        this.user.send('bid', data);
-    }
-
-    commandPlay(data) {
-        this.user.send('play', data);
-    }
-
-    commandPass(data) {
-        this.user.send('pass', data);
-    }
-
-    commandDecision(data) {
-        //this.user.send('decision', data);
-    }
-
-    commandPassReport(data) {
-        let copy = data.cards.map(c => data.index == this.index || this.kibitzer ? c : new card.Card());
-        this.user.send('passreport', { index: data.index, cards: copy });
-    }
-
-    commandTrickWinner(data) {
-        this.user.send('trickwinner', data);
-    }
-
-    setDisconnected(disc) {
-        this.disconnected = disc;
-        if (!disc) {
-            this.replacedByRobot = false;
-        }
-    }
-
-    replaceWithRobot() {
-        this.replacedByRobot = true;
-        if (this.readiedBid !== undefined) {
-            this.core.incomingBid(this.index, this.readiedBid);
-            this.readiedBid = undefined;
-        } else if (this.readiedPlay !== undefined) {
-            this.core.incomingPlay(this.index, this.readiedPlay);
-            this.readiedPlay = undefined;
-        } else if (this.readiedPass !== undefined) {
-            this.core.incomingPass(this.index, this.readiedPass);
-            this.readiedPass = undefined;
-        } else if (this.readiedDecision !== undefined) {
-            this.core.makeDecision(this.index, this.readiedDecision);
-            this.readiedDecision = undefined;
-        }
-    }
-
-    bidReady(bid) {
-        if (this.replacedByRobot) {
-            this.core.incomingBid(this.index, bid);
-            this.readiedBid = undefined;
-        } else {
-            this.readiedBid = bid;
-        }
-    }
-
-    playReady(card) {
-        if (this.replacedByRobot) {
-            this.core.incomingPlay(this.index, card);
-            this.readiedPlay = undefined;
-        } else {
-            this.readiedPlay = card;
-        }
-    }
-
-    passReady(cards) {
-        if (this.replacedByRobot) {
-            this.core.incomingPass(this.index, cards);
-            this.readiedPass = undefined;
-        } else {
-            this.readiedPass = cards;
-        }
-    }
-
-    decisionReady(choice) {
-        if (this.replacedByRobot) {
-            this.core.makeDecision(this.index, choice);
-            this.readiedDecision = undefined;
-        } else {
-            this.readiedDecision = choice;
-        }
-    }
-
-    poke() {
-        this.user.send('poke');
-    }
-
-    removeDecision() {
-        this.decision = undefined;
-        //this.user.send('removedecision');
-    }
-}
-
-class AiPlayer extends Player {
-    constructor(i, core) {
-        super();
-        this.disconnected = false;
-        this.human = false;
-        this.id = '@robot' + i;
-        this.name = ai.robotNames[Math.floor(ai.robotNames.length * Math.random())] + ' bot'
-        this.core = core;
-    }
-
-    bidReady(bid) {
-        this.core.incomingBid(this.index, bid);
-    }
-
-    playReady(card) {
-        this.core.incomingPlay(this.index, card);
-    }
-
-    passReady(cards) {
-        this.core.incomingPass(this.index, cards);
-    }
-
-    decisionReady(choice) {
-        this.core.makeDecision(this.index, choice);
-    }
-
-    removeDecision() {
-        this.decision = undefined;
     }
 }
 
@@ -1188,6 +1203,14 @@ class Core {
         this.flushDiffs()
     }
 
+    createHumanPlayer(user) {
+        return new (createHumanPlayer(Player))(user, this)
+    }
+
+    createAiPlayer(number) {
+        return new (createAiPlayer(Player))(number, this)
+    }
+
     startGame() {
         if (!this.verifyGameCanStart()) {
             return;
@@ -1289,6 +1312,8 @@ class Core {
                 bid: 0,
                 taken: 0,
                 bidded: false,
+                pass: [],
+                passed: false,
                 trick: new card.Card(),
                 played: false,
                 lastTrick: new card.Card()
@@ -1424,8 +1449,69 @@ class Core {
     }
 }
 
+class TrickOrder {
+    constructor(trump) {
+        this.order = [];
+        this.trump = trump;
+        this.led = -1;
+        this.leader = undefined;
+    }
+
+    copy() {
+        let ans = new TrickOrder(this.trump);
+        ans.led = this.led;
+        ans.leader = this.leader;
+        ans.order = this.order.map(e => e);
+        return ans;
+    }
+
+    getLed() {
+        return this.led;
+    }
+
+    push(card, index) {
+        let entry = { card: card, index: index };
+
+        if (this.led == -1) {
+            this.order.push(entry);
+            this.led = card.suit;
+            this.leader = index;
+            return;
+        }
+
+        if (card.suit != this.led && card.suit != this.trump) {
+            return;
+        }
+
+        for (let i = 0; i < this.order.length; i++) {
+            let comp = card.comp(this.order[i].card, this.trump, this.led);
+            if (comp < 0) {
+                continue;
+            } else if (comp > 0) {
+                this.order.splice(i, 0, entry);
+                return;
+            } else {
+                this.order.splice(i, 1);
+                return;
+            }
+        }
+        this.order.push(entry);
+    }
+
+    getWinner() {
+        if (this.order.length == 0) {
+            return this.leader;
+        } else {
+            return this.order[0].index;
+        }
+    }
+}
+
 module.exports = {
     Core: Core,
     PlayersList: PlayersList,
-    HumanPlayer: HumanPlayer
+    Player: Player,
+    createHumanPlayer: createHumanPlayer,
+    createAiPlayer: createAiPlayer,
+    TrickOrder: TrickOrder
 }

@@ -17,31 +17,29 @@ export class PostGamePage extends WrappedDOMElement {
 
         this.scoreTab = new PostGamePlotTab(this, 0);
         this.winTab = new PostGamePlotTab(this, 1);
-        this.summaryTab = new PostGameSummaryTab(this, 2);
-        this.bidsTab = new PostGameBidsTab(this, 3);
-        this.playsTab = new PostGamePlaysTab(this, 4);
 
         this.tabs = [
             this.scoreTab,
             this.winTab,
-            this.summaryTab,
-            this.bidsTab,
-            this.playsTab
         ];
         this.interactables = this.tabs;
 
         this.buttons = [
             document.getElementById("igScores"),
             document.getElementById("igWinP"),
-            document.getElementById("igSummary"),
-            document.getElementById("igBids"),
-            document.getElementById("igPlays"),
         ];
         for (let i = 0; i < this.buttons.length; i++) {
             this.buttons[i].addEventListener('click', () => { this.changeTab(i) });
         }
         this.tabSelected = 0;
         toggleButton(this.buttons[0]);
+    }
+
+    addTab(cls, button) {
+        let index = this.tabs.length
+        this.tabs.push(new cls(this, index))
+        this.buttons.push(button)
+        button.addEventListener('click', () => this.changeTab(index))
     }
 
     paint() {
@@ -85,7 +83,7 @@ export class PostGamePage extends WrappedDOMElement {
                     name: t.name,
                     index: t.number,
                     scores: [0].concat(p.scores),
-                    wbProbs: [100 / data.players.length].concat(p.wbProbs.map(x => 100 * x))
+                    wbProbs: [100 / data.players.length].concat(p.wbProbs ? p.wbProbs.map(x => 100 * x) : [])
                 };
             });
         } else {
@@ -94,7 +92,7 @@ export class PostGamePage extends WrappedDOMElement {
                     name: p.name,
                     index: p.index,
                     scores: [0].concat(p.scores),
-                    wbProbs: [100 / data.players.length].concat(p.wbProbs.map(x => 100 * x))
+                    wbProbs: [100 / data.players.length].concat(p.wbProbs ? p.wbProbs.map(x => 100 * x) : [])
                 };
             });
         }
@@ -106,9 +104,9 @@ export class PostGamePage extends WrappedDOMElement {
         this.scoreTab.scorePlot.addTicks(ticks);
         this.winTab.scorePlot.addTicks(ticks);
 
-        this.summaryTab.addData(data);
-        this.bidsTab.addData(data);
-        this.playsTab.addData(data);
+        for (let tab of this.tabs) {
+            tab.addData(data)
+		}
     }
 
     changeTab(tab) {
@@ -125,7 +123,7 @@ export class PostGamePage extends WrappedDOMElement {
     }
 }
 
-class PostGameTab extends CanvasInteractable {
+export class PostGameTab extends CanvasInteractable {
     constructor(page, index) {
         super();
         this.page = page;
@@ -154,7 +152,7 @@ class PostGameTab extends CanvasInteractable {
     }
 }
 
-class Plot extends CanvasInteractable {
+export class Plot extends CanvasInteractable {
     constructor(ctx, offsetX, offsetY) {
         super();
         this.ctx = ctx;
@@ -313,7 +311,7 @@ class Plot extends CanvasInteractable {
     }
 }
 
-class PostGamePlotTab extends PostGameTab {
+export class PostGamePlotTab extends PostGameTab {
     constructor(page, index) {
         super(page, index);
 
@@ -371,13 +369,15 @@ class PostGamePlotTab extends PostGameTab {
         this.interactables = [this.scoreBoard, this.scorePlotPanel];
     }
 
+    addData(data) { }
+
     paint() {
         this.scoreBoard.paint();
         this.scorePlotPanel.paint();
     }
 }
 
-class PostGameSummaryTab extends PostGameTab {
+export class PostGameSummaryTab extends PostGameTab {
     constructor(page, index) {
         super(page, index);
 
@@ -444,10 +444,10 @@ class PostGameSummaryTab extends PostGameTab {
     addData(data) {
         this.options = data.options;
         this.players = data.players;
-        this.lucks = data.players.map(p => p.lucks.reduce((a, b) => a + b, 0));
-        this.diffs = data.players.map(p => p.diffs.reduce((a, b) => a + b, 0));
-        this.bidScores = data.players.map(p => 10 * Math.exp(-p.hypoPointsLost.reduce((a, b) => a + b, 0) / 57));
-        this.playScores = data.players.map(p => 10 * Math.exp(-p.mistakes.reduce((a, b) => a + b, 0) / 5));
+        this.lucks = data.players.map(p => p.lucks ? p.lucks.reduce((a, b) => a + b, 0) : 0);
+        this.diffs = data.players.map(p => p.diffs ? p.diffs.reduce((a, b) => a + b, 0) : 0);
+        this.bidScores = data.players.map(p => 10 * Math.exp(p.hypoPointsLost ? -p.hypoPointsLost.reduce((a, b) => a + b, 0) / 57 : 0));
+        this.playScores = data.players.map(p => 10 * Math.exp(p.mistakes ? -p.mistakes.reduce((a, b) => a + b, 0) / 5 : 0));
 
         this.panel.addData(data);
     }
@@ -491,7 +491,7 @@ class PostGameSummaryTab extends PostGameTab {
     }
 }
 
-class PostGameBidsTab extends PostGameTab {
+export class PostGameBidsTab extends PostGameTab {
     constructor(page, index) {
         super(page, index);
 
@@ -677,7 +677,7 @@ class PostGameBidsTab extends PostGameTab {
     }
 }
 
-class PostGamePlaysTab extends PostGameTab {
+export class PostGamePlaysTab extends PostGameTab {
     constructor(page, index) {
         super(page, index);
 

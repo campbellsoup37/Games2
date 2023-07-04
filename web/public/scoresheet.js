@@ -44,7 +44,8 @@ export class ScoreSheet extends WrappedDOMElement {
                 this.panel.canvas.height = parent.scrollCanvasHeight();
             });
             this.clear();
-            parent.paintScroll(this.ctx);
+            parent.paintRoundLabels(this.ctx)
+            parent.paintScroll(this.ctx)
         };
 
         this.interactables = [
@@ -172,54 +173,12 @@ export class ScoreSheet extends WrappedDOMElement {
         }
     }
 
-    paintScroll(ctx) {
-        let N = this.players.length;
-        let wid = (this.width() - 4 * this.margin - 2 * this.dealerHWidth) / N;
+    paintRoundLabels(ctx) { }
 
+    paintScroll(ctx) {
+        let wid = (this.width() - 4 * this.margin - 2 * this.dealerHWidth) / this.players.length;
         let height = this.scrollCanvasHeight();
 
-        // dealers and hand sizes
-        for (let i = 0; i < this.rounds.length; i++) {
-            let round = this.rounds[i];
-
-            // TODO
-            //let info = '';
-            //if (mode == 'Oh Hell') {
-            //    info = round.handSize;
-            //} else if (mode == 'Hearts') {
-            //    if (round.pass == 0) {
-            //        info = 'K';
-            //    } else if (round.pass > 0) {
-            //        info = 'L';
-            //        if (round.pass > 1) {
-            //            info += round.pass;
-            //        }
-            //    } else if (round.pass < 0) {
-            //        info = 'R';
-            //        if (round.pass < -1) {
-            //            info += (-round.pass);
-            //        }
-            //    }
-            //}
-            let info = round.handSize
-
-            drawText(ctx,
-                info,
-                this.margin + this.dealerHWidth / 2,
-                this.scoreVSpacing * (i + 0.5),
-                1, 1,
-                font.basic, 'black'
-            );
-            drawText(ctx,
-                this.playersUnsorted[round.dealer].name.substring(0, 1),
-                2 * this.margin + 1.5 * this.dealerHWidth,
-                this.scoreVSpacing * (i + 0.5),
-                1, 1,
-                font.basic, 'black'
-            );
-        }
-
-        // rest
         let currentX = 3 * this.margin + 2 * this.dealerHWidth;
 
         let colCount = this.options.teams ? this.teams.length : this.players.length;
@@ -241,40 +200,6 @@ export class ScoreSheet extends WrappedDOMElement {
                 let k = members.length;
                 let fnt = font.basic;
                 let b = 0;
-
-
-                // TODO don't paint bid chips for hearts
-                // bid chips
-                b = (fnt == font.basic ? 13 : 9) + 3;
-                let chipStart = j < scoresList.length ? 0 : this.margin + b - wid;
-                let chipSpacing = j < scoresList.length ? this.margin + b : wid;
-                for (const p of members) {
-                    if (p.bids && j < p.bids.length) {
-                        ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
-
-                        // if (p.takens === undefined || p.takens.length < p.bid.length) {
-                        //     ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
-                        // } else if (p.takens[j] == p.bids[j]) {
-                        //     ctx.fillStyle = 'rgb(255, 175, 175)';
-                        // } else {
-                        //     ctx.fillStyle = 'rgb(125, 255, 125)';
-                        // }
-
-                        drawOval(ctx,
-                            currentX + 1 + fullWid - chipSpacing * k - chipStart,
-                            this.scoreVSpacing * (j + 0.5) - b / 2,
-                            b, b
-                        );
-                        drawText(ctx,
-                            p.bids[j],
-                            currentX + 1 + fullWid - chipSpacing * k - chipStart + b / 2,
-                            this.scoreVSpacing * (j + 0.5),
-                            1, 1,
-                            fnt, 'black'
-                        );
-                    }
-                    k--;
-                }
 
                 // scores
                 k = members.length;

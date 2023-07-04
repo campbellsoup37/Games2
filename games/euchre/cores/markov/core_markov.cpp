@@ -315,6 +315,8 @@ void EuchreCoreMarkov::chooseTrumpSetup() {
 }
 
 void EuchreCoreMarkov::trumpChoiceApplied(int index, TrumpChoice& choice) {
+	EuchreCore::trumpChoiceApplied(index, choice);
+
 	std::shared_ptr<std::vector<double>> out = std::make_shared<std::vector<double>>(
 		std::vector<double>{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 }
 	);
@@ -381,10 +383,10 @@ void EuchreCoreMarkov::UnapplyTrumpChoice::undo() {
 }
 
 void EuchreCoreMarkov::playSetup() {
-	EuchreCore::playSetup();
 	for (auto& player : players) {
 		dynamic_cast<EuchrePlayerMarkov&>(*player).cardsPlayed.clear();
 	}
+	EuchreCore::playSetup();
 }
 
 void EuchreCoreMarkov::trickSetup() {
@@ -462,44 +464,47 @@ void EuchreCoreMarkov::trickSetup() {
 	}
 }
 
-void EuchreCoreMarkov::cardPlayed(std::shared_ptr<EuchrePlayer> player, const Card& card) {
-	EuchreCore::cardPlayed(player, card);
+void EuchreCoreMarkov::cardPlayed(int index, const Card& card) {
+	std::shared_ptr<EuchrePlayer> player = players[index];
 	dynamic_cast<EuchrePlayerMarkov&>(*player).cardsPlayed.push_back(card.code);
 
 	std::shared_ptr<std::vector<double>> out = std::make_shared<std::vector<double>>();
 	for (int i = 0; i < 4 * (13 - deck.lowCard); i++) {
 		out->push_back(0.0);
 	}
-	int index = adjustedCode(card.code, trump, deck.lowCard);
-	(*out)[index] = 1.0;
+	int i = adjustedCode(card.code, trump, deck.lowCard);
+	(*out)[i] = 1.0;
 
 	for (auto& owner : players) {
 		auto inCopy = std::make_shared<SparseVector>(SparseVector{ *pIns[owner->index] });
 		pData.emplace_back(inCopy, out);
-		playCardForPlayerPIn(owner, player, card);
+		playCardForPlayerPIn(owner, player, card, leader);
 	}
+
+	EuchreCore::cardPlayed(index, card);
 }
 
 std::shared_ptr<EuchreCoreMarkov::Undo> EuchreCoreMarkov::playCardHypo(std::shared_ptr<EuchrePlayer> owner, std::shared_ptr<EuchrePlayer> player, const Card& card, int lastIndex) {
 	std::shared_ptr<EuchreCoreMarkov::Undo> undo = std::make_shared<EuchreCoreMarkov::UnplayCard>(*this, owner, player, card);
 
-	EuchreCore::playCard(player, card);
-	playCardForPlayerPIn(owner, player, card);
+	int prevLeader = leader;
+	EuchreCore::playCard(player->index, card);
+	playCardForPlayerPIn(owner, player, card, prevLeader);
 	if (player->index == lastIndex) {
-		undo->next = evaluateTrickHypo(owner);
+		evaluateTrickForPlayerRIn(owner);
 	}
 
 	return undo;
 }
 
-void EuchreCoreMarkov::playCardForPlayerPIn(std::shared_ptr<EuchrePlayer> owner, std::shared_ptr<EuchrePlayer> player, const Card& card) {
+void EuchreCoreMarkov::playCardForPlayerPIn(std::shared_ptr<EuchrePlayer> owner, std::shared_ptr<EuchrePlayer> player, const Card& card, int prevLeader) {
 	auto& pIn = pIns[owner->index];
 
 	if (owner->index == player->index) {
 		pIn->myHand.remove(card);
 	}
 
-	int indexOffset = config.N - leader;
+	int indexOffset = config.N - prevLeader;
 	auto& pFeatures = pIn->playerFeatures[(player->index + indexOffset) % config.N];
 	pFeatures->trick.set(&card);
 	if (follow != -1) {
@@ -524,11 +529,14 @@ void EuchreCoreMarkov::playCardForPlayerPIn(std::shared_ptr<EuchrePlayer> owner,
 }
 
 EuchreCoreMarkov::UnplayCard::UnplayCard(EuchreCoreMarkov& core, std::shared_ptr<EuchrePlayer> owner, std::shared_ptr<EuchrePlayer> player, const Card& card)
-	: Undo(core), owner(owner), player(player), card(card), prevFollow(core.follow), prevShowedOut(prevFollow != -1 ? player->showedOut[prevFollow] : false) 
-{}
+	: Undo(core), owner(owner), player(player), card(card), prevFollow(core.follow), prevShowedOut(prevFollow != -1 ? player->showedOut[prevFollow] : false), prevPlayIndex(core.playIndex)
+{
+	next = std::make_shared<EuchreCoreMarkov::UnevaluateTrick>(core, owner);
+}
 
 void EuchreCoreMarkov::UnplayCard::undo() {
 	// base core
+	core.playIndex = prevPlayIndex;
 	core.follow = prevFollow;
 	if (prevFollow != -1) {
 		player->showedOut[prevFollow] = prevShowedOut;
@@ -568,15 +576,6 @@ void EuchreCoreMarkov::UnplayCard::undo() {
 	}
 }
 
-std::shared_ptr<EuchreCoreMarkov::Undo> EuchreCoreMarkov::evaluateTrickHypo(std::shared_ptr<EuchrePlayer> owner) {
-	std::shared_ptr<EuchreCoreMarkov::Undo> undo = std::make_shared<EuchreCoreMarkov::UnevaluateTrick>(*this, owner);
-
-	EuchreCore::evaluateTrick();
-	evaluateTrickForPlayerRIn(owner);
-
-	return undo;
-}
-
 void EuchreCoreMarkov::evaluateTrickForPlayerRIn(std::shared_ptr<EuchrePlayer> owner) {
 	auto& rIn = playRIns[owner->index][leader];
 	int taken = players[leader]->taken + players[(leader + config.N / 2) % config.N]->taken;
@@ -588,6 +587,10 @@ EuchreCoreMarkov::UnevaluateTrick::UnevaluateTrick(EuchreCoreMarkov& core, std::
 }
 
 void EuchreCoreMarkov::UnevaluateTrick::undo() {
+	if (core.playIndex < core.config.N) {
+		return;
+	}
+
 	int newLeader = core.leader;
 
 	core.players[newLeader]->taken--;
@@ -609,18 +612,22 @@ std::shared_ptr<EuchreCoreMarkov::Undo> EuchreCoreMarkov::scoreHypo(EuchreRoundR
 }
 
 void EuchreCoreMarkov::Unscore::undo() {
-	if (core.roundResult != EuchreRoundResult::UNFINISHED) {
-		core.roundResult = EuchreRoundResult::UNFINISHED;
-		for (int i = 0; i < (int)prevScores.size(); i++) {
-			core.scores[i] = prevScores[i];
-		}
-		core.gameOver = false;
-		core.winningScore = -1;
-		core.roundNumber--;
+	if (core.roundResult == EuchreRoundResult::UNFINISHED) {
+		return;
 	}
+
+	core.roundResult = EuchreRoundResult::UNFINISHED;
+	for (int i = 0; i < (int)prevScores.size(); i++) {
+		core.scores[i] = prevScores[i];
+	}
+	core.gameOver = false;
+	core.winningScore = -1;
+	core.roundNumber--;
 }
 
 void EuchreCoreMarkov::scored() {
+	EuchreCore::scored();
+
 	std::shared_ptr<std::vector<double>> out = std::make_shared<std::vector<double>>(
 		std::vector<double>{ 0.0, 0.0, 0.0 }
 	);
@@ -730,8 +737,8 @@ void EuchreCoreMarkov::logDebugDetails() {
 void EuchrePlayerMarkov::chooseTrump(int phase, bool stuck) {
 	TrumpDecision decision(*this);
 
-	double roll = (double)core->rng() / core->rng.max();
-	if (roll > greed) {
+	double x = roll();
+	if (x > greed) {
 		readiedTrumpChoice = dynamic_cast<TrumpDiff&>(*decision.random(core->rng)).trumpChoice;
 	}
 	else {
@@ -742,8 +749,8 @@ void EuchrePlayerMarkov::chooseTrump(int phase, bool stuck) {
 void EuchrePlayerMarkov::pickItUp() {
 	DiscardDecision decision(*this);
 
-	double roll = (double)core->rng() / core->rng.max();
-	if (roll > greed) {
+	double x = roll();
+	if (x > greed) {
 		readiedDiscard = dynamic_cast<DiscardDiff&>(*decision.random(core->rng)).card;
 	}
 	else {
@@ -758,8 +765,8 @@ void EuchrePlayerMarkov::play(std::vector<const Card*>& canPlay) {
 	else {
 		PlayDecision decision(*this, canPlay);
 
-		double roll = (double)core->rng() / core->rng.max();
-		if (roll > greed) {
+		double x = roll();
+		if (x > greed) {
 			readiedPlay = dynamic_cast<PlayDiff&>(*decision.random(core->rng)).card;
 		}
 		else {

@@ -69,3 +69,27 @@ def hls(fname, limit=10):
 
     with h5py.File(fname, 'r') as f:
         hls(f, 0)
+
+def hdiff(fname1, fname2):
+    def hdiff(g1, g2, path):
+        if isinstance(g1, h5py.Dataset):
+            if len(g1) != len(g2):
+                print(f'{path}: left and right have different sizes {len(g1)}, {len(g2)}')
+            else:
+                d = sum(np.array(g1) != np.array(g2))
+                if d != 0:
+                    print(f'{path}: left and right differ in {d} places')
+        elif isinstance(g1, h5py.Group):
+            for k in g1:
+                if k not in g2:
+                    print(f'{path}/{k}: missing from right')
+            for k in g2:
+                if k not in g1:
+                    print(f'{path}/{k}: missing from left')
+            for k in g1:
+                if k in g2:
+                    hdiff(g1[k], g2[k], f'{path}/{k}')
+
+    with h5py.File(fname1, 'r') as f1:
+        with h5py.File(fname2, 'r') as f2:
+            hdiff(f1, f2, '')

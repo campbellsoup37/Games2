@@ -94,6 +94,26 @@ class Card {
         }
     }
 
+    compSortEuchre(card, trump) {
+        function strength(c) {
+            let n = c.num
+            let s = c.suit
+            if (c.suit == trump && c.num == 11) {
+                n = 16
+            } else if ((c.suit + 2) % 4 == trump && c.num == 11) {
+                n = 15
+                s = trump
+            }
+            return n + 20 * s
+        }
+
+        if (this.suit == card.suit && this.num == card.num) {
+            return 0
+        } else {
+            return strength(this) > strength(card) ? 1 : -1
+        }
+    }
+
     comp(card, trump, led) {
         let thisVal = this.compHelperVal(trump, led);
         let cardVal = card.compHelperVal(trump, led);

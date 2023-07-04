@@ -1,4 +1,5 @@
 const log = require('./logging').log
+card = require('./card')
 core = require('./core')
 
 var CoreState = {
@@ -8,10 +9,129 @@ var CoreState = {
     POSTGAME: 'HEARTS_POSTGAME'
 }
 
+class HeartsPlayer extends core.Player {
+    constructor() {
+        super()
+    }
+
+    toDict(visible) {
+        return {
+            name: this.name,
+            id: this.id,
+            human: this.human,
+            host: this.host,
+            disconnected: this.disconnected,
+            replacedByRobot: this.replacedByRobot,
+            kibitzer: this.kibitzer,
+            index: this.index,
+            taken: this.taken,
+            score: this.score,
+            hand: this.hand ? this.hand.map(c => visible ? c : new card.Card()) : [],
+            trick: this.trick,
+            played: this.played,
+            lastTrick: this.lastTrick,
+            decision: visible ? this.decision : undefined,
+            scores: this.scores,
+            pass: this.pass ? this.pass.map(c => visible ? c : new card.Card()) : [],
+            passed: this.passed
+        };
+    }
+
+    toPostGameDict() {
+        return {
+            id: this.id,
+            name: this.name,
+            index: this.index,
+            human: this.human,
+            hands: this.hands.map(h => h.map(c => c.toDict())),
+            takens: this.takens,
+            scores: this.scores,
+            score: this.score,
+            plays: this.plays.map(r => r.map(c => c.toDict()))
+        };
+    }
+
+    newGameReset() {
+        this.score = 0;
+        this.trick = new card.Card();
+        this.lastTrick = new card.Card();
+        this.takens = [];
+        this.scores = [];
+        this.hands = [];
+        this.plays = [];
+        this.passes = [];
+    }
+
+    newRoundReset() {
+        this.taken = 0;
+        this.trick = new card.Card();
+        this.played = false;
+        this.lastTrick = new card.Card();
+        this.acceptedClaim = false;
+        this.plays.push([]);
+        this.pass = [];
+        this.passed = false;
+        this.cardsTaken = [];
+    }
+
+    addPlay(card) {
+        this.trick = card;
+        this.played = true;
+        for (let i = 0; i < this.hand.length; i++) {
+            if (this.hand[i].matches(card)) {
+                this.hand.splice(i, 1);
+            }
+        }
+
+        this.plays[this.plays.length - 1].push(card);
+    }
+
+    addPass(cards) {
+        this.pass = cards;
+        this.passed = true;
+        this.passes.push(cards);
+    }
+
+    incTaken(cards) {
+        super.incTaken()
+        this.cardsTaken = this.cardsTaken.concat(cards)
+    }
+
+    startPass(data) {
+        if (!this.kibitzer) {
+            this.passAsync();
+        }
+        //this.commandPass(data);
+    }
+
+    async passAsync() {
+        let cards = await this.strategyModule.makePass();
+        this.passReady(cards);
+    }
+
+    addMakingProbs(probs) { }
+}
+
+class HeartsHumanPlayer extends core.createHumanPlayer(HeartsPlayer) {
+    constructor(user, core) { super(user, core) }
+}
+
+class HeartsAiPlayer extends core.createAiPlayer(HeartsPlayer) {
+    constructor(number, core) { super(number, core) }
+}
+
 class HeartsCore extends core.Core {
     constructor(players, game, options) {
         super(players, game, options);
         this.state = CoreState.PREGAME
+    }
+
+    createHumanPlayer(user) {
+        return new HeartsHumanPlayer(user, this)
+    }
+
+    createAiPlayer(number) {
+        return new HeartsAiPlayer(number, this)
     }
 
     isInGame() {
@@ -25,14 +145,11 @@ class HeartsCore extends core.Core {
 
     sendGameState(player) {
         let choices = {}
-        // TODO state choices (shoot)
-        //if (player.index == this.turn) {
-        //    if (this.state == CoreState.BIDDING) {
-        //        choices.cannotBid = this.whatCanINotBid(this.turn)
-        //    } else if (this.state == CoreState.PLAYING) {
-        //        choices.canPlay = this.whatCanIPlay(this.turn)
-        //    }
-        //}
+        if (player.index == this.turn) {
+            if (this.state == CoreState.PLAYING) {
+                choices.canPlay = this.whatCanIPlay(this.turn)
+            }
+        }
         this.addUpdateDiff(this.toDict(player.kibitzer ? -1 : player.index), choices)
         this.flushDiffs([player])
     }
@@ -41,23 +158,23 @@ class HeartsCore extends core.Core {
         let cardsToRemove = [];
         switch (this.players.size()) {
             case 3:
-                cardsToRemove = [new Card(2, 0)];
+                cardsToRemove = [new card.Card(2, 0)];
                 this.totalPoints = 26;
                 break;
             case 5:
-                cardsToRemove = [new Card(2, 0), new Card(2, 1)];
+                cardsToRemove = [new card.Card(2, 0), new card.Card(2, 1)];
                 this.totalPoints = 26;
                 break;
             case 6:
-                cardsToRemove = [new Card(2, 0), new Card(2, 1), new Card(2, 2), new Card(2, 3)];
+                cardsToRemove = [new card.Card(2, 0), new card.Card(2, 1), new card.Card(2, 2), new card.Card(2, 3)];
                 this.totalPoints = 25;
                 break;
             case 7:
-                cardsToRemove = [new Card(2, 0), new Card(2, 1), new Card(2, 2)];
+                cardsToRemove = [new card.Card(2, 0), new card.Card(2, 1), new card.Card(2, 2)];
                 this.totalPoints = 26;
                 break;
             case 8:
-                cardsToRemove = [new Card(2, 0), new Card(2, 1), new Card(2, 2), new Card(2, 3)];
+                cardsToRemove = [new card.Card(2, 0), new card.Card(2, 1), new card.Card(2, 2), new card.Card(2, 3)];
                 this.totalPoints = 25;
                 break;
         }
@@ -66,7 +183,7 @@ class HeartsCore extends core.Core {
             for (let d = 1; d <= this.D; d++) {
                 for (let suit = 0; suit < 4; suit++) {
                     for (let num = 2; num <= 14; num++) {
-                        this.deck.push(new Card(num, suit));
+                        this.deck.push(new card.Card(num, suit));
                     }
                 }
             }
@@ -79,7 +196,7 @@ class HeartsCore extends core.Core {
     getNextHands() {
         return {
             hands: this.deck.deal(this.players.size(), this.rounds[this.roundNumber].handSize, false),
-            trump: [new Card()]
+            trump: [new card.Card()]
         };
     }
 
@@ -102,7 +219,12 @@ class HeartsCore extends core.Core {
             this.transitionToPlay();
         } else {
             this.state = CoreState.PASSING;
-            this.players.communicateTurn(this.state, this.turn);
+            //this.players.communicateTurn(this.state, this.turn);
+            for (let player of this.players.players) {
+                player.passAsync()
+            }
+            this.addUpdateDiff({ state: this.state })
+            this.flushDiffs()
         }
     }
 
@@ -120,7 +242,36 @@ class HeartsCore extends core.Core {
             return;
         }
 
-        this.players.passReport(index, cards);
+        this.addUpdateDiff({}, { move: { human: player.human } })
+        this.flushDiffs()
+
+        this.players.passReport(index, cards)
+
+        let cardIndices = cards.map(card => player.hand.findIndex(c => c.matches(card)))
+        player.hand = player.hand.filter(c1 => !cards.some(c2 => c2.matches(c1)))
+
+        this.addRemoveDiff({ players: { [index]: { hand: cardIndices } } })
+        this.addUpdateDiff({
+            players: {
+                [player.index]: {
+                    pass: cards,
+                    passed: true,
+                    passedTo: -1
+                }
+            }
+        })
+        this.flushDiffs([player].concat(this.players.kibitzers))
+        this.addRemoveDiff({ players: { [index]: { hand: [...Array(cards.length).keys()] } } })
+        this.addUpdateDiff({
+            players: {
+                [player.index]: {
+                    pass: cards.map(c => new card.Card()),
+                    passed: true,
+                    passedTo: -1
+                }
+            }
+        })
+        this.flushDiffs(this.players.players.filter(p => p.id != player.id))
 
         if (this.players.allHavePassed()) {
             this.transitionToPlay();
@@ -138,12 +289,20 @@ class HeartsCore extends core.Core {
                 break;
             }
         }
+        this.addUpdateDiff({ leader: this.leader })
 
         this.firstTrick = true;
         this.heartsBroken = false;
         this.precalculatedPoints = undefined;
         this.shooter = -2; // -2 nobody has taking points, -1 points are split, otherwise index of shooter
-        this.players.communicateTurn(this.state, this.turn, { canPlay: this.whatCanIPlay(this.turn) });
+        //this.players.communicateTurn(this.state, this.turn, { canPlay: this.whatCanIPlay(this.turn) });
+        this.players.players[this.turn].playAsync()
+
+        this.flushDiffs()
+        this.addUpdateDiff({ state: this.state, turn: this.turn })
+        this.flushDiffs(this.players.players.filter(p => p.index != this.turn).concat(this.players.kibitzers))
+        this.addUpdateDiff({ state: this.state, turn: this.turn }, { canPlay: this.whatCanIPlay(this.turn) })
+        this.flushDiffs([this.players.players[this.turn]])
     }
 
     incomingPlay(index, card) {
@@ -167,20 +326,43 @@ class HeartsCore extends core.Core {
             this.heartsBroken = true;
         }
 
+        this.addUpdateDiff({}, { move: { human: player.human } })
+        this.flushDiffs()
+        let cardIndex = player.hand.findIndex(c => c.matches(card))
+        this.addRemoveDiff({ players: { [index]: { hand: [cardIndex] } } })
+        this.flushDiffs([player].concat(this.players.kibitzers))
+        this.addRemoveDiff({ players: { [index]: { hand: [0] } } })
+        this.flushDiffs(this.players.players.filter(p => p.id != player.id))
+
         let prev = (index + this.players.size() - 1) % this.players.size();
         let follow = this.players.players[prev].trick.suit;
         this.players.playReport(index, card, index == this.leader, follow);
+        this.addUpdateDiff({
+            players: {
+                [player.index]: {
+                    trick: card,
+                    played: true
+                }
+            }
+        })
+        this.flushDiffs()
 
         this.turn = this.players.nextUnkicked(this.turn);
 
         if (!this.players.allHavePlayed()) {
-            this.players.communicateTurn(this.state, this.turn, { canPlay: this.whatCanIPlay(this.turn) });
+            //this.players.communicateTurn(this.state, this.turn, { canPlay: this.whatCanIPlay(this.turn) });
+            this.players.players[this.turn].playAsync()
+
+            this.flushDiffs()
+            this.addUpdateDiff({ state: this.state, turn: this.turn })
+            this.flushDiffs(this.players.players.filter(p => p.index != this.turn).concat(this.players.kibitzers))
+            this.addUpdateDiff({ state: this.state, turn: this.turn }, { canPlay: this.whatCanIPlay(this.turn) })
+            this.flushDiffs([this.players.players[this.turn]])
         } else {
             this.turn = this.getWinner();
             this.winners[this.winners.length - 1].push(this.turn);
             this.leaders[this.leaders.length - 1].push(this.leader);
             this.leader = this.turn;
-            let hasPoints = false;
             for (const player of this.players.players) {
                 let playerCard = player.trick;
                 if (playerCard.suit == 3 || (playerCard.suit == 2 && playerCard.num == 12)) {
@@ -193,12 +375,35 @@ class HeartsCore extends core.Core {
                 }
             }
             this.players.trickWinner(this.turn);
-            this.trickOrder = new TrickOrder(-1);
+            this.trickOrder = new core.TrickOrder(-1);
             this.playNumber++;
             this.firstTrick = false;
 
+            this.addUpdateDiff({}, { trickWinner: this.leader })
+            this.flushDiffs()
+            this.addUpdateDiff(
+                {
+                    leader: this.leader,
+                    players: this.players.players.map(p => ({
+                        lastTrick: p.lastTrick,
+                        trick: p.trick,
+                        played: p.played,
+                        taken: p.taken
+                    }))
+                }
+            )
+            this.flushDiffs()
+
             if (!this.players.hasEmptyHand(this.turn)) {
-                this.players.communicateTurn(this.state, this.turn, { canPlay: this.whatCanIPlay(this.turn) });
+                //this.players.communicateTurn(this.state, this.turn, { canPlay: this.whatCanIPlay(this.turn) });
+                let canPlay = this.whatCanIPlay(this.turn)
+                this.players.players[this.turn].playAsync()
+
+                this.flushDiffs()
+                this.addUpdateDiff({ state: this.state, turn: this.turn })
+                this.flushDiffs(this.players.players.filter(p => p.index != this.turn).concat(this.players.kibitzers))
+                this.addUpdateDiff({ state: this.state, turn: this.turn }, { canPlay: canPlay })
+                this.flushDiffs([this.players.players[this.turn]])
             } else {
                 this.claims.push(-1);
                 this.checkIfSomeoneShot();
@@ -206,7 +411,38 @@ class HeartsCore extends core.Core {
         }
     }
 
+    enableClaimRequest() {
+        return this.state == CoreState.PLAYING && this.claimer === undefined
+    }
+
     claimAccepted() {
+        let winner = this.players.players[this.claimer]
+        let remaining = winner.hand.length
+        if (!winner.trick.isEmpty()) {
+            remaining++
+        }
+        winner.taken += remaining
+
+        let remainingCards = this.players.players.reduce((r, p) => r.concat(p.hand).concat(p.trick.isEmpty() ? [] : p.trick), [])
+        for (let card of remainingCards) {
+            if (card.suit == 3 || (card.suit == 2 && card.num == 12)) {
+                if (this.shooter == -2) {
+                    this.shooter = this.claimer
+                } else if (this.shooter != this.claimer) {
+                    this.shooter = -1
+                }
+                break
+            }
+        }
+        winner.cardsTaken = winner.cardsTaken.concat(remainingCards)
+
+        let updateDiff = { players: this.players.players.map(p => ({ hand: [], trick: new card.Card() })) }
+        updateDiff.players[this.claimer].taken = winner.taken
+        this.addUpdateDiff(updateDiff)
+        this.flushDiffs()
+
+        this.players.emitAll('claimresult', { accepted: true, claimer: this.claimer, remaining: remaining });
+
         this.checkIfSomeoneShot();
     }
 
@@ -214,16 +450,19 @@ class HeartsCore extends core.Core {
         if (this.shooter < 0) {
             this.finishRound();
         } else {
-            let choices = [`Go down ${this.totalPoints}`, `Everyone else go up ${this.totalPoints}`];
+            let choices = [`Go down ${this.totalPoints}`, `Everyone else go up ${this.totalPoints}`]
             if (this.players.players[this.shooter].score + this.totalPoints == 100) {
-                choices.push(`Go up ${this.totalPoints}`);
+                choices.push(`Go up ${this.totalPoints}`)
             }
 
-            this.players.players[this.shooter].startDecision({
+            let shooter = this.players.players[this.shooter]
+            shooter.startDecision({
                 name: 'shoot',
                 prompt: 'You shot! Choose an option.',
                 choices: choices
-            });
+            })
+            this.addUpdateDiff({ players: { [this.shooter]: { decision: shooter.decision } } })
+            this.flushDiffs([shooter])
         }
     }
 
@@ -234,6 +473,8 @@ class HeartsCore extends core.Core {
             }
 
             this.players.players[this.shooter].removeDecision();
+            this.addRemoveDiff({ players: { [this.shooter]: ['decision'] } })
+            this.flushDiffs([this.players.players[this.shooter]])
 
             this.precalculatedPoints = [];
             for (let i = 0; i < this.players.size(); i++) {
@@ -258,6 +499,12 @@ class HeartsCore extends core.Core {
                 }
             }
             this.finishRound();
+        } else if (data.name == 'claim') {
+            if (this.claimer === undefined) {
+                return;
+            }
+
+            this.players.respondToClaim(index, data.choice == 0);
         }
     }
 
@@ -312,6 +559,25 @@ class HeartsCore extends core.Core {
         }
     }
 
+    sendPostGame() {
+        this.state = CoreState.POSTGAME;
+
+        let json = {
+            mode: this.game.mode,
+            id: this.game.id,
+            options: this.options.toDict(),
+            rounds: this.rounds,
+            trumps: this.trumps.map(c => c.toDict()),
+            leaders: this.leaders,
+            winners: this.winners,
+            claims: this.claims,
+            ...this.players.postGameData()
+        };
+        this.game.publishJson(json);
+        this.addUpdateDiff({ state: this.state }, { postGameData: json })
+        this.flushDiffs()
+    }
+
     // data for ai
     howManyToPass() {
         let ans = [0, 0, 0, 4, 3, 2, 2, 2, 1];
@@ -362,7 +628,7 @@ class HeartsCore extends core.Core {
     }
 
     getLeadCard() {
-        return new Card(this.players.size() == 4 ? 2 : 3, 0);
+        return new card.Card(this.players.size() == 4 ? 2 : 3, 0);
     }
 }
 

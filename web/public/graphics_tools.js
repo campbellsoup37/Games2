@@ -128,7 +128,7 @@ export function createDeckImg(id) {
     return obj
 }
 
-export function drawCard(ctx, card, x, y, scale, deckImg, dark, maxY, thickBorderColor) {
+export function drawCard(ctx, card, x, y, scale, deckImg, dark, maxY, thickBorderColor, angle) {
     let cardNumber = card.num == 0 ? 52 : (card.num - 1) % 13 + 13 * rowCodeInv[card.suit];
     let col = cardNumber % 9;
     let row = (cardNumber - col) / 9;
@@ -147,6 +147,13 @@ export function drawCard(ctx, card, x, y, scale, deckImg, dark, maxY, thickBorde
     let x1 = x + cw1 * scale / 2;
     let y1 = maxY;
 
+    if (angle !== undefined) {
+        ctx.translate(x, y)
+        ctx.rotate(angle)
+        x0 = -cw1 * scale / 2;
+        y0 = -ch1 * scale / 2;
+    }
+
     ctx.drawImage(
         deckImg.img,
         col * cw1, row * ch1, cw1, diff / scale,
@@ -160,6 +167,11 @@ export function drawCard(ctx, card, x, y, scale, deckImg, dark, maxY, thickBorde
 
     if (thickBorderColor !== undefined) {
         drawBox(ctx, x0, y0, cw1 * scale, ch1 * scale, 7, thickBorderColor, false, true);
+    }
+
+    if (angle !== undefined) {
+        ctx.rotate(-angle)
+        ctx.translate(-x, -y)
     }
 }
 

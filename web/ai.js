@@ -6,6 +6,8 @@ var fs = require('fs');
 
 var robotNames = fs.readFileSync('./misc/firstnames.txt', 'utf8').replace('\r', '').split('\n');
 
+const _euchre = require('./build/Release/euchre');
+
 // shared utils
 function log(msg, tabs) {
     if (debug) {
@@ -1130,20 +1132,63 @@ class StrategyModuleOITeam {
 }
 
 // cpp wrapper -----------------------------------------------------------------
-class StrategyModuleCppWrapper {
+class StrategyModuleEuchreCore {
     constructor() { }
 
     setCoreAndPlayer(core, player) {
-        this.core = core;
-        this.player = player;
+        this.core = core
+        this.player = player
+
+        if (this.core.coreCpp === undefined) {
+            this.setCoreCpp()
+        }
     }
 
-    makeBid() {
-        
+    setCoreCpp() {
+        let seed = Math.floor(Math.random() * 2147483648)
+        this.core.coreCpp = new _euchre.EuchreCoreRandom(seed)
+    }
+
+    chooseTrump() {
+        return this.core.coreCpp.chooseTrump()
+    }
+
+    orderUp() {
+        return this.core.coreCpp.orderUp()
     }
 
     makePlay() {
-        
+        return this.core.coreCpp.getCardPlay()
+    }
+}
+
+class StrategyModuleEuchreCoreMarkov extends StrategyModuleEuchreCore {
+    constructor() { super() }
+
+    setCoreCpp() {
+        let maxRounds = 0
+        let seed = Math.floor(Math.random() * 2147483648)
+        let log = false
+        let logRule = [false, false, false, false]
+        let coreCpp = new _euchre.EuchreCoreMarkov(maxRounds, seed, log, logRule)
+
+        let weights = {}
+        let mtime
+        for (let name of ['tnn', 'pnn', 'rnn', 'wnn']) {
+            weights[name] = []
+            let nn = new ml.NNModel(`./models/euchre/${name}.txt`, [])
+            for (let layer of nn.layers) {
+                if (!layer.input) {
+                    weights[name].push([layer.w.matrix, layer.b.vec])
+                }
+            }
+            mtime = nn.mtime
+        }
+        coreCpp.setWeights(weights)
+
+        this.core.incomingChat(undefined, `StrategyModuleEuchreCoreMarkov weights last modified ${mtime}`)
+
+        this.core.coreCpp = coreCpp
     }
 }
 
@@ -1166,7 +1211,7 @@ function buildModules(mode, params) {
             return new Array(params.N).fill(0).map(x => new StrategyModuleDumb());
 
         case 'Euchre':
-            return new Array(params.N).fill(0).map(x => new StrategyModuleCppWrapper());
+            return new Array(params.N).fill(0).map(x => new StrategyModuleEuchreCoreMarkov());
     }
 }
 

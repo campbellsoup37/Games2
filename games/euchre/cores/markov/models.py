@@ -4,6 +4,7 @@ import numpy as np
 import os
 import pandas as pd
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import sys
 import tensorflow as tf
 import threading
 import time
@@ -96,6 +97,13 @@ class NNModel:
 
     def save(self, model_dir):
         self.nn.save(f'{model_dir}/{self.name}')
+
+    def save_for_web(self, web_dir):
+        fname = f'{web_dir}/{self.name}.txt'
+        with open(fname, 'w') as f:
+            for weights in self.nn.weights:
+                f.write(str([list(x) if len(weights.shape) > 1 else x for x in weights.numpy().T]).replace('[', '{').replace(']', '}').replace('}, ', '}, \n'))
+                f.write('\n\n')
 
     def write_history(self, history_fname):
         if self.history is None:
@@ -258,6 +266,10 @@ class NNModels:
         for model in self.models:
             model.save(model_dir)
 
+    def save_for_web(self, web_dir):
+        for model in self.models:
+            model.save_for_web(web_dir)
+
     def write_history(self, history_fname):
         for model in self.models:
             model.write_history(history_fname)
@@ -270,6 +282,14 @@ class NNModels:
         for model in self.models:
             model.evaluate_data(history_fname)
 
+
+def save_models_for_web(iter):
+    models = NNModels()
+    model_dir = f'C:/Users/campb/data/euchre/{iter}/1/models'
+    models.load(model_dir)
+    web_dir = f'{sys.prefix}/../web/models/euchre'
+    os.makedirs(web_dir, exist_ok=True)
+    models.save_for_web(web_dir)
 
 
 # TODO ?
@@ -296,3 +316,8 @@ class TFController:
     def start(self):
         self.process.start()
         self.listener_thread.start()
+
+
+if __name__ == '__main__':
+    iter = 'no_w_fit_5'
+    save_models_for_web(iter)

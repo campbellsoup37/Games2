@@ -284,6 +284,42 @@ io.on("connection", function (socket) {
         game.core.incomingPass(user.player.index, data.cards.map(c => new card.Card(c.num, c.suit)));
         user.player.readiedPass = undefined;
     });
+    socket.on('trumpChoice', function (data) {
+        let user = userDict[socket.id];
+
+        if (user === undefined) {
+            log(`ERROR: socket ${socket.id} tried to make a trump choice, but they are not in the user dict.`);
+            return;
+        }
+
+        let game = user.game;
+
+        if (!user.game) {
+            log(`ERROR: user ${user.id} tried to make a trump choice, but they are not in a game.`);
+            return;
+        }
+
+        game.core.incomingTrumpChoice(user.player.index, data);
+        user.player.readiedTrumpChoice = undefined;
+    });
+    socket.on('discard', function (data) {
+        let user = userDict[socket.id];
+
+        if (user === undefined) {
+            log(`ERROR: socket ${socket.id} tried to discard, but they are not in the user dict.`);
+            return;
+        }
+
+        let game = user.game;
+
+        if (!user.game) {
+            log(`ERROR: user ${user.id} tried to discard, but they are not in a game.`);
+            return;
+        }
+
+        game.core.incomingDiscard(user.player.index, new card.Card(data.num, data.suit));
+        user.player.readiedDiscard = undefined;
+    });
     socket.on('chat', function (data) {
         let user = userDict[socket.id];
 
@@ -387,7 +423,6 @@ io.on("connection", function (socket) {
         game.core.makeDecision(user.player.index, data);
         user.player.readiedDecision = undefined;
     });
-
     socket.on('reteam', function (data) {
         let user = userDict[socket.id];
 
@@ -512,7 +547,8 @@ class Game {
     }
 
     joinPlayer(user) {
-        let player = new core.HumanPlayer(user, this.core);
+        //let player = new core.HumanPlayer(user, this.core);
+        let player = this.core.createHumanPlayer(user)
         player.name = user.id;
 
         if (this.host === undefined) {

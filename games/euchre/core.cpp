@@ -17,55 +17,56 @@ std::shared_ptr<EuchrePlayer> EuchreCore::createPlayer(int index) {
 }
 
 void EuchreCore::run(std::string logFilename) {
-	gameSetup();
-
 	if (logFilename.size() > 0) {
 		log.openFile(logFilename);
 	}
 
-	if (log.logging) {
-		log.openList("rounds");
-	}
+	gameSetup();
 
 	// One loop = one round
 	while (!gameOver) {
-		if (log.logging) {
-			log.openDict();
-		}
-
 		dealSetup();
 		deal();
 		chooseTrumpSetup();
-		chooseTrump();
+		runChooseTrump();
 		if (trumpPhase != EuchreTrumpPhase::PASSED) {
 			if (orderedUp) {
-				orderUp();
+				runOrderUp();
 			}
 
 			playSetup();
-			play();
+			runPlay();
 			scored();
-
-			if (log.logging) {
-				log.openDict("scores");
-				for (int i = 0; i < config.N / 2; i++) {
-					log.write(i, scores[i]);
-				}
-				log.close();
-			}
-		}
-
-		if (log.logging) {
-			log.close();
-		}
-
-		if (config.maxRounds > 0 && roundNumber == config.maxRounds) {
-			gameOver = true;
 		}
 	}
 
 	if (log.logging) {
 		log.closeFile();
+	}
+}
+
+void EuchreCore::runChooseTrump() {
+	while (trumpPhase != EuchreTrumpPhase::DECLARED && trumpPhase != EuchreTrumpPhase::PASSED) {
+		int index = (leader + trumpIndex) % config.N;
+		TrumpChoice& choice = getTrumpChoice(index);
+		applyTrumpChoice(index, choice);
+		trumpChoiceApplied(index, choice);
+	}
+}
+
+void EuchreCore::runOrderUp() {
+	int index = roundNumber % config.N;
+	Card& card = this->getDiscard(index);
+	discard(index, card);
+	discarded(index, card);
+}
+
+void EuchreCore::runPlay() {
+	while (roundResult == EuchreRoundResult::UNFINISHED) {
+		int index = (leader + playIndex) % config.N;
+		Card cardPlay = getCardPlay(index);
+		playCard(index, cardPlay);
+		cardPlayed(index, cardPlay);
 	}
 }
 
@@ -76,9 +77,17 @@ void EuchreCore::gameSetup() {
 	for (int i = 0; i < config.N / 2; i++) {
 		scores[i] = 0;
 	}
+
+	if (log.logging) {
+		log.openList("rounds");
+	}
 }
 
 void EuchreCore::dealSetup() {
+	if (log.logging) {
+		log.openDict();
+	}
+
 	deck.shuffle();
 	for (auto& player : players) {
 		for (int i = 0; i < 4; i++) {
@@ -122,43 +131,28 @@ void EuchreCore::chooseTrumpSetup() {
 	declarer = -1;
 	dealerStuck = false;
 	trumpIndex = 0;
-}
+	orderedUp = false;
 
-void EuchreCore::chooseTrump() {
 	if (log.logging) {
 		log.openDict("trumpNaming");
 	}
+}
 
-	while (trumpPhase != EuchreTrumpPhase::DECLARED && trumpPhase != EuchreTrumpPhase::PASSED) {
-		int index = (leader + trumpIndex) % config.N;
-
-		if (log.logging) {
-			std::stringstream ss;
-			if (trumpPhase == EuchreTrumpPhase::UP) {
-				ss << "up," << index;
-			}
-			else if (trumpPhase == EuchreTrumpPhase::DOWN) {
-				ss << "down," << index;
-			}
-			log.openDict(ss.str());
-			log.openDict("details");
-		}
-
-		players[index]->chooseTrump(trumpPhase, dealerStuck);
-		TrumpChoice& choice = players[index]->readiedTrumpChoice;
-
-		if (log.logging) {
-			log.close();
-			log.write("choice", choice.toString());
-			log.close();
-		}
-		applyTrumpChoice(index, choice);
-		trumpChoiceApplied(index, choice);
-	}
-
+TrumpChoice& EuchreCore::getTrumpChoice(int index) {
 	if (log.logging) {
-		log.close();
+		std::stringstream ss;
+		if (trumpPhase == EuchreTrumpPhase::UP) {
+			ss << "up," << index;
+		}
+		else if (trumpPhase == EuchreTrumpPhase::DOWN) {
+			ss << "down," << index;
+		}
+		log.openDict(ss.str());
+		log.openDict("details");
 	}
+
+	players[index]->chooseTrump(trumpPhase, dealerStuck);
+	return players[index]->readiedTrumpChoice;
 }
 
 void EuchreCore::applyTrumpChoice(int index, TrumpChoice& choice) {
@@ -170,6 +164,7 @@ void EuchreCore::applyTrumpChoice(int index, TrumpChoice& choice) {
 			}
 			else if (trumpPhase == EuchreTrumpPhase::DOWN) {
 				trumpPhase = EuchreTrumpPhase::PASSED;
+				roundNumber++;
 			}
 		}
 		trumpIndex = (trumpIndex + 1) % config.N;
@@ -188,111 +183,103 @@ void EuchreCore::applyTrumpChoice(int index, TrumpChoice& choice) {
 	}
 }
 
-void EuchreCore::orderUp() {
+void EuchreCore::trumpChoiceApplied(int index, TrumpChoice& choice) {
+	if (log.logging) {
+		log.close();
+		log.write("choice", choice.toString());
+		log.close();
+		if (trumpPhase == EuchreTrumpPhase::DECLARED) {
+			log.close();
+		}
+		if (trumpPhase == EuchreTrumpPhase::PASSED) {
+			log.close();
+			log.close();
+		}
+	}
+}
+
+Card& EuchreCore::getDiscard(int index) {
 	if (log.logging) {
 		log.openDict("discard");
 		log.openDict("details");
 	}
 
-	int dealer = roundNumber % config.N;
-	auto& player = players[dealer];
-	player->pickItUp();
-	Card& discard = player->readiedDiscard;
+	players[index]->pickItUp();
+	return players[index]->readiedDiscard;
+}
 
-	player->hand.insert(upCard);
-	player->hand.erase(discard);
+void EuchreCore::discard(int index, const Card& card) {
+	players[index]->hand.insert(upCard);
+	players[index]->hand.erase(card);
+}
 
+void EuchreCore::discarded(int index, const Card& card) {
 	if (log.logging) {
 		log.close();
-		log.write(dealer, discard.toString());
+		log.write(index, card.toString());
 		log.close();
 	}
 }
 
 void EuchreCore::playSetup() {
 	roundResult = EuchreRoundResult::UNFINISHED;
-}
+	trickIndex = 0;
 
-void EuchreCore::trickSetup() {
-	follow = -1;
-}
-
-void EuchreCore::play() {
 	if (log.logging) {
 		log.openList("tricks");
 	}
 
-	// One loop = one trick
-	for (trickIndex = 0; trickIndex < config.h && roundResult == EuchreRoundResult::UNFINISHED; trickIndex++) {
-		trickSetup();
+	trickSetup();
+}
 
-		if (log.logging) {
-			log.openDict();
-		}
-
-		// One loop = one play
-		for (playIndex = 0; playIndex < config.N; playIndex++) {
-			int i = (leader + playIndex) % config.N;
-			if (i == sittingOut) {
-				continue;
-			}
-			auto& player = players[i];
-
-			if (log.logging) {
-				log.openDict(player->index);
-				log.openDict("details");
-			}
-
-			// Choose the card
-			std::vector<const Card*> canPlay;
-			whatCanIPlay(player->hand, canPlay);
-			player->play(canPlay);
-			Card cardPlay = player->readiedPlay;
-
-			// Play the card
-			playCard(player, cardPlay);
-			cardPlayed(player, cardPlay);
-
-			if (log.logging) {
-				log.close();
-				log.write("card", cardPlay.toString());
-				log.close();
-			}
-		}
-
-		evaluateTrick();
-
-		if (log.logging) {
-			log.write("winner", leader);
-			log.close();
-		}
+void EuchreCore::trickSetup() {
+	follow = -1;
+	playIndex = 0;
+	while ((leader + playIndex) % config.N == sittingOut) {
+		playIndex++;
 	}
 
 	if (log.logging) {
-		log.close();
+		log.openDict();
 	}
 }
 
-void EuchreCore::playCard(std::shared_ptr<EuchrePlayer> player, const Card& card) {
-	player->trick = card;
+Card& EuchreCore::getCardPlay(int index) {
+	if (log.logging) {
+		log.openDict(index);
+		log.openDict("details");
+	}
+
+	auto& player = players[index];
+	std::vector<const Card*> canPlay;
+	whatCanIPlay(player->hand, canPlay);
+	player->play(canPlay);
+	return player->readiedPlay;
+}
+
+void EuchreCore::playCard(int index, const Card& card) {
+	players[index]->trick = card;
 	deck.cardsNotPlayed.erase(card);
 
 	int suit = EuchreDeck::trumpAdjustedSuit(card, trump);
 	if (follow != -1 && suit != follow) {
-		player->showedOut[follow] = true;
+		players[index]->showedOut[follow] = true;
 	}
 
 	if (follow == -1) {
 		follow = suit;
 	}
-}
 
-void EuchreCore::cardPlayed(std::shared_ptr<EuchrePlayer> player, const Card& card) {
-	player->hand.erase(card);
+	do {
+		playIndex++;
+	} while (playIndex < config.N && (leader + playIndex) % config.N == sittingOut);
+	if (playIndex == config.N) {
+		evaluateTrick();
+	}
 }
 
 void EuchreCore::evaluateTrick() {
-	leader = trickWinner(follow);
+	leader = trickWinner();
 	players[leader]->taken++;
 
 	int partner = (declarer + config.N / 2) % config.N;
@@ -308,14 +295,14 @@ void EuchreCore::evaluateTrick() {
 		roundResult = EuchreRoundResult::MADE_ALL;
 	}
 
-	score();
+	if (roundResult != EuchreRoundResult::UNFINISHED) {
+		score();
+	}
 }
 
 void EuchreCore::score() {
 	int team = declarer % (config.N / 2);
 	switch (roundResult) {
-	case UNFINISHED:
-		return;
 	case EUCHRED:
 		for (int i = 1; i < config.N / 2; i++) {
 			int otherTeam = (declarer + i) % (config.N / 2);
@@ -349,9 +336,45 @@ void EuchreCore::score() {
 	}
 
 	roundNumber++;
+
+	if (config.maxRounds > 0 && roundNumber == config.maxRounds) {
+		gameOver = true;
+	}
 }
 
-void EuchreCore::scored() {}
+void EuchreCore::cardPlayed(int index, const Card& card) {
+	players[index]->hand.erase(card);
+	
+	if (log.logging) {
+		log.close();
+		log.write("card", card.toString());
+		log.close();
+	}
+
+	if (playIndex == config.N) {
+		if (log.logging) {
+			log.write("winner", leader);
+			log.close();
+		}
+
+		trickIndex++;
+		if (roundResult == EuchreRoundResult::UNFINISHED) {
+			trickSetup();
+		}
+	}
+}
+
+void EuchreCore::scored() {
+	if (log.logging) {
+		log.close();
+		log.openDict("scores");
+		for (int i = 0; i < config.N / 2; i++) {
+			log.write(i, scores[i]);
+		}
+		log.close();
+		log.close();
+	}
+}
 
 void EuchreCore::whatCanIPlay(Hand& hand, std::vector<const Card*>& canPlay) {
 	for (const Card& card : hand) {
@@ -370,9 +393,11 @@ void EuchreCore::whatCanIPlay(Hand& hand, std::vector<const Card*>& canPlay) {
 	}
 }
 
-int EuchreCore::trickWinner(int follow)
-{
+int EuchreCore::trickWinner() {
 	int ans = -1;
+	if (playIndex < config.N) {
+		return ans;
+	}
 	int winningSuit = follow;
 	int winningNum = -1;
 	for (auto& player : players) {

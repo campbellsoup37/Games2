@@ -75,19 +75,7 @@ export class ClientState {
     join(data) {
         this.client.vars.autojoinId = data.id
 
-        let key
-        switch (data.mode) {
-            case 'Oh Hell':
-                key = 'OH_HELL_BASE'
-                break
-            case 'Hearts':
-                key = 'HEARTS_BASE'
-                break
-            default:
-                console.log(`Error: cannot join unimplemented mode ${data.mode}`)
-                return
-        }
-
+        let key = data.mode.replace(' ', '_').toUpperCase() + '_BASE'
         this.client.changeState(key)
     }
 
@@ -178,7 +166,7 @@ export class ClientStateMainMenu extends ClientState {
                     return;
                 }
 
-                mode = data.mode;
+                let mode = data.mode;
                 if (mode == 'Oh Hell') {
                     this.client.changeState('OH_HELL_BASE', data)
                     this.client.changeState('OH_HELL_POSTGAME', data)
@@ -218,7 +206,17 @@ export class ClientStateModeSelect extends ClientState {
         // TO DO: get default options per mode
         let options = new Options()
         if (!this.multiplayer && options.robots == 0) {
-            options.robots = mode == 'Euchre' ? 3 : 4
+            switch (mode) {
+            case 'Oh Hell':
+                options.robots = 4
+                break
+            case 'Hearts':
+                options.robots = 2
+                break
+            case 'Euchre':
+                options.robots = 3
+                break
+            }
         }
         this.client.emit('creategame', { mode: mode, multiplayer: this.multiplayer, options: options })
     }
