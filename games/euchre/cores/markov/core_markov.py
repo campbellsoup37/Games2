@@ -1,6 +1,7 @@
 import numpy as np
+import time
 
-from _euchre import EuchreCoreMarkov as _EuchreCoreMarkov
+from _euchre import EuchreConfig, EuchreCoreMarkov as _EuchreCoreMarkov
 import games
 
 def data_to_in_tf_args(data):
@@ -23,10 +24,11 @@ def data_to_in_tf_args(data):
     return [indices, values, dense_shape]
 
 class EuchreCoreMarkov(_EuchreCoreMarkov):
-    def __init__(self, config):
+    def __init__(self, config, runner_name=None):
         _EuchreCoreMarkov.__init__(self, config)
         self.models = None
         self.data_names = None
+        self.runner_name = runner_name or ''
 
     def set_models(self, raw_models):
         self.models = []
@@ -62,5 +64,23 @@ class EuchreCoreMarkov(_EuchreCoreMarkov):
         for greed, player in zip(greeds, self.players):
             player.greed = greed
 
+    def run(self, game_name, log=None, greeds=None, is_evaluation=False):
+        log = log or ''
+        greeds = greeds or [1.0] * core.config.N
+        t0 = time.time()
+        self.set_greeds(greeds)
+        super(EuchreCoreMarkov, self).run(log)
+        t1 = time.time()
+        print(f'Game {game_name} done in {int(t1 - t0)} seconds by {self.runner_name}')
+        if is_evaluation:
+            self.clearData()
+            return self.scores
+
     def ipdb(self):
         import ipdb; ipdb.set_trace()
+
+def create_euchre_core_markov(name, **args):
+    configCpp = EuchreConfig(*args['args_list'])
+    core = EuchreCoreMarkov(configCpp, name)
+    core.initialize()
+    return core

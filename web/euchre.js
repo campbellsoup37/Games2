@@ -51,7 +51,8 @@ class EuchrePlayer extends core.Player {
             takens: this.takens,
             scores: this.scores,
             score: this.score,
-            plays: this.plays.map(r => r.map(c => c.toDict()))
+            plays: this.plays.map(r => r.map(c => c.toDict())),
+            trumpChoices: this.trumpChoices
         };
     }
 
@@ -91,6 +92,12 @@ class EuchrePlayer extends core.Player {
     async playAsync() {
         let choice = await this.strategyModule.makePlay()
         this.playReady(new cards.Card(choice.card))
+    }
+
+    addTrumpChoice(choice) {
+        this.trumpChoice = choice
+        this.bidded = true
+        this.trumpChoices[this.trumpChoices.length - 1].push(choice)
     }
 }
 
@@ -214,6 +221,7 @@ class EuchreCore extends core.Core {
         }
 
         this.upCard = new cards.Card(data.upCard)
+        this.trumps.push(this.upCard)
 
         this.leader = data.leader;
         this.turn = data.leader;
@@ -260,9 +268,7 @@ class EuchreCore extends core.Core {
             return;
         }
 
-        player.trumpChoice = choice
-        player.trumpChoices[player.trumpChoices.length - 1].push(choice)
-        player.bidded = true
+        player.addTrumpChoice(choice)
 
         this.addUpdateDiff({}, { move: { human: player.human } })
         this.flushDiffs()

@@ -424,7 +424,6 @@ function createHumanPlayer(base) {
 
         removeDecision() {
             this.decision = undefined;
-            //this.user.send('removedecision');
         }
     }
     return HumanPlayer
@@ -510,14 +509,20 @@ class PlayersList {
 
     addPlayer(player) {
         // check if it's a reconnect
-        let reconnect = false;
+        let reconnect = false
         for (const p of this.players) {
             if (p.id == player.id) {
-                p.reconnect(player.user);
-                p.setDisconnected(false);
-                player = p;
-                reconnect = true;
-                break;
+                p.reconnect(player.user)
+                p.setDisconnected(false)
+                if (player.host) {
+                    // Feels like this could be better
+                    p.host = true
+                    this.game.host = p
+                }
+                player = p
+                reconnect = true
+                this.core.addUpdateDiff({ 'players': { [player.index]: { disconnected: false, host: player.host } } })
+                break
             }
         }
 
@@ -532,13 +537,12 @@ class PlayersList {
         }
 
         // First let existing players know of the new player
-        this.core.addUpdateDiff({ 'players': { [player.index]: player.toDict() } })
         this.core.flushDiffs(existingPlayers)
 
         // Then give the new player the game state
         this.core.sendGameState(player)
 
-        this.game.stopExpirationTimer();
+        this.game.stopExpirationTimer()
     }
 
     adjustRobotCount(count) {
@@ -550,7 +554,6 @@ class PlayersList {
         if (robots.length < count) {
             let newRobots = []
             for (let i = robots.length; i < count; i++) {
-                //newRobots.push(new AiPlayer(i + 1, this.core))
                 newRobots.push(this.core.createAiPlayer(i + 1))
             }
             this.addPlayers(newRobots, [])
@@ -580,7 +583,6 @@ class PlayersList {
         } else {
             player.setDisconnected(true)
             this.core.addUpdateDiff({ players: { [player.index]: { disconnected: true } } })
-            //this.updatePlayers([player])
         }
 
         if (this.players.filter(p => p.human && !p.disconnected).length == 0 && this.kibitzers.length == 0) {
@@ -600,7 +602,6 @@ class PlayersList {
                     this.game.host = p;
                     p.host = true;
                     this.core.addUpdateDiff({ players: { [p.index]: { host: true } } })
-                    //this.updatePlayers([p]);
                     break
                 }
             }
@@ -696,8 +697,6 @@ class PlayersList {
         }
 
         this.core.flushDiffs()
-
-        //this.updatePlayers([player]);
     }
 
     randomizePlayerOrder() {
@@ -746,15 +745,13 @@ class PlayersList {
     }
 
     giveHands(hands) {
+        this.core.addUpdateDiff({ players: this.players.map(p => ({ hand: [] })) })
+        this.core.flushDiffs()
         for (const player of this.players) {
             player.addHand(hands.hands[player.index]);
-            //player.commandDeal(hands);
             this.core.addUpdateDiff({ players: hands.hands.map((h, i) => ({ hand: h.map(c => i == player.index ? c : new card.Card()) })) })
             this.core.flushDiffs([player])
         }
-        //for (const kibitzer of this.kibitzers) {
-        //    kibitzer.commandDeal(hands);
-        //}
         this.core.addUpdateDiff({ players: hands.hands.map(h => ({ hand: h })) })
         this.core.flushDiffs(this.kibitzers)
     }
@@ -762,31 +759,6 @@ class PlayersList {
     sendDealerLeader(dealer, leader) {
         this.emitAll('dealerleader', { dealer: dealer, leader: leader });
     }
-
-    //communicateTurn(state, turn, data) {
-    //    if (state == CoreState.BIDDING) {
-    //        for (const player of this.players) {
-    //            player.startBid({ turn: turn, ss: data.ss });
-    //        }
-    //        for (const player of this.kibitzers) {
-    //            player.startBid({ turn: turn, ss: data.ss });
-    //        }
-    //    } else if (state == CoreState.PLAYING) {
-    //        for (const player of this.players) {
-    //            player.startPlay({ turn: turn, canPlay: player.index == turn ? data.canPlay.map(c => c.toDict()) : undefined });
-    //        }
-    //        for (const player of this.kibitzers) {
-    //            player.startPlay({ turn: turn });
-    //        }
-    //    } else if (state == CoreState.PASSING) {
-    //        for (const player of this.players) {
-    //            player.startPass({ turn: turn });
-    //        }
-    //        for (const player of this.kibitzers) {
-    //            player.startPass({ turn: turn });
-    //        }
-    //    }
-    //}
 
     bidSum() {
         let ans = 0;
@@ -800,22 +772,14 @@ class PlayersList {
 
     bidReport(index, bid, offset) {
         this.players[index].addBid(bid, offset);
-        //this.emitAll('bidreport', {index: index, bid: bid, human: this.players[index].human});
     }
 
     playReport(index, card, isLead, follow) {
         this.players[index].addPlay(card, isLead, follow);
-        //this.emitAll('playreport', {index: index, card: {num: card.num, suit: card.suit}, human: this.players[index].human, isLead: isLead});
     }
 
     passReport(index, cards) {
         this.players[index].addPass(cards);
-        //for (const player of this.players) {
-        //    player.commandPassReport({ index: index, cards: cards });
-        //}
-        //for (const kibitzer of this.kibitzers) {
-        //    kibitzer.commandPassReport({ index: index, cards: cards });
-        //}
     }
 
     allHaveBid() {
@@ -836,7 +800,6 @@ class PlayersList {
         for (const player of this.players) {
             player.newTrickReset();
         }
-        //this.emitAll('trickwinner', {index: index});
     }
 
     hasEmptyHand(index) {
@@ -866,7 +829,6 @@ class PlayersList {
             ));
             player.addLuck(sig2 == 0 ? 0 : luck);
         }
-        //this.emitAll('scoresreport', {scores: newScores});
     }
 
     performPass(offset) {

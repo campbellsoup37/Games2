@@ -10,7 +10,7 @@ import {
 
 import { TimerEntry, OhcCanvas } from '../canvas.js'
 
-import { PostGamePage, PostGamePlotTab } from '../postgame.js'
+import { PostGamePage, PostGameTab, PostGamePlotTab } from '../postgame.js'
 
 import { ClientStateGameBase, createClientStatePreGame, createClientStatePlaying, createClientStatePostGame, CanvasBase } from './base.js'
 
@@ -267,6 +267,22 @@ function formatTrumpChoice(choice) {
     }
 }
 
+function drawTrumpChoice(ctx, choice, x, y, t, just) {
+    t = t === undefined ? 1 : t
+    just = just === undefined ? 0 : just
+    let format = formatTrumpChoice(choice)
+    let height = format.height * (1 - t / 2)
+    let width = Math.max(format.width * (1 - t * 0.666), height)
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
+    drawBox(ctx, x - (just + 1) * width / 2, y - height / 2, width, height, height / 2, undefined)
+    if (t == 0) {
+        drawText(ctx, format.text, x - just * width / 2, y + 1, 1, 1, font.large, format.color)
+    } else {
+        drawText(ctx, format.text, x - just * width / 2, y, 1, 1, font.bold, format.color)
+    }
+}
+
 function drawEuchreScore(ctx, x, y, score, suits, img) {
     let u = img.height
     let x0 = x
@@ -478,20 +494,7 @@ class EuchreCanvas extends CanvasBase {
                 let bidX = startX * (1 - t) + endX * t;
                 let bidY = startY * (1 - t) + endY * t;
 
-                let format = formatTrumpChoice(player.trumpChoice)
-                let height = format.height * (1 - t / 2)
-                let width = Math.max(format.width * (1 - t * 0.666), height)
-
-                this.client.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
-                drawBox(this.client.ctx, bidX - width / 2, bidY - height / 2, width, height, height / 2, undefined)
-                if (t == 0) {
-                    this.client.ctx.strokeStyle = serverData.options.teams ? colors[player.team] : 'black';
-                    this.client.ctx.lineWidth = serverData.options.teams ? 2 : 1;
-                    this.client.ctx.lineWidth = 1;
-                    drawText(this.client.ctx, format.text, bidX, bidY + 1, 1, 1, font.large, format.color);
-                } else {
-                    drawText(this.client.ctx, format.text, bidX, bidY, 1, 1, font.bold, format.color);
-                }
+                drawTrumpChoice(this.client.ctx, player.trumpChoice, bidX, bidY, t)
             }
         }
     }
@@ -554,7 +557,13 @@ class EuchreCanvas extends CanvasBase {
     }
 
     loadPostGame(data) {
-        //data.trumps = data.trumps.map(c => new Card(c.num, c.suit))
+        data.trumps = data.trumps.map(c => new Card(c.num, c.suit))
+        for (const player of data.players) {
+            //player.bidQs = player.bidQs.map(r => r.map(pr => 100 * pr))
+            player.hands = player.hands.map(h => h.map(c => new Card(c.num, c.suit)))
+            player.plays = player.plays.map(h => h.map(c => new Card(c.num, c.suit)))
+            //player.makingProbs = player.makingProbs.map(r => r.map(t => t.map(pair => [new Card(pair[0].num, pair[0].suit), pair[1]])))
+        }
 
         this.pgPlayers = data.players
         this.pgTeams = data.teams
@@ -568,5 +577,295 @@ class EuchreCanvas extends CanvasBase {
 class EuchrePostGamePage extends PostGamePage {
     constructor(canvas) {
         super(canvas)
+        this.addTab(EuchrePostGamePlaysTab, document.getElementById("igPlays"))
+    }
+}
+
+class EuchrePostGamePlaysTab extends PostGameTab {
+    constructor(page, index) {
+        super(page, index);
+
+        this.elements = [
+            document.getElementById("igPlaysTabContainer")
+        ];
+
+        this.headerHeight = 35;
+        this.margin = 4;
+        this.columnXs = [
+            3 / 16, 11 / 32, 1 / 2, 23 / 32, 15 / 16
+        ];
+
+        let parent = this;
+        class PlaysPanel extends PanelInteractable {
+            constructor() {
+                super(
+                    document.getElementById("igPlaysContainer"),
+                    document.getElementById("igPlaysCanvas"),
+                    true
+                );
+            }
+
+            wheel(y) {
+                parent.deltaRound(Math.sign(y));
+            }
+
+            paint() {
+                super.paint();
+                parent.paintHeader(this.ctx, this.width());
+                parent.paintBody(this.ctx, this.width(), this.height());
+            }
+        }
+        this.panel = new PlaysPanel();
+        this.interactables = [this.panel];
+    }
+
+    addData(data) {
+        this.options = data.options;
+        this.numRounds = data.players[0].hands.length;
+        this.numTricks = new Array(this.numRounds);
+
+        this.rounds = data.rounds.map(r => r.handSize);
+        this.dealers = data.rounds.map(r => r.dealer);
+        this.claims = data.claims;
+
+        let div = document.getElementById('igPlaysRoundsButtonContainer');
+        while (div.firstChild) {
+            div.removeChild(div.firstChild);
+        }
+        this.buttons0 = new Array(this.numRounds);
+        for (let i = 0; i < this.numRounds; i++) {
+            let button = document.createElement('button');
+            button.classList.add(
+                'bg-white', 'rounded-lg', 'border', 'border-black', 'w-5', 'h-5',
+                'font-bold', 'text-sm', 'select-none', 'hover:bg-gray-300'
+            );
+            button.innerHTML = this.rounds[i];
+            button.addEventListener('click', () => {
+                this.selectRound(i);
+                this.selectTrick(0);
+            });
+            div.appendChild(button);
+            this.buttons0[i] = button;
+
+            let min = Math.min(...data.players.map(p => p.plays[i].length));
+            let max = Math.max(...data.players.map(p => p.plays[i].length));
+
+            this.numTricks[i] = max;
+            if (max == 0 || (min == max && max < this.rounds[i] && this.claims[i] != -1)) {
+                this.numTricks[i]++;
+            }
+        }
+
+        this.selected0 = undefined;
+        this.selected1 = undefined;
+        this.selectRound(0);
+        this.selectTrick(0);
+
+        this.players = data.players;
+        this.trumps = data.trumps;
+        this.leaders = data.leaders;
+        this.winners = data.winners;
+
+        // should I put this mess server-side?
+        this.hands = new Array(this.players.length);
+        this.playIndices = new Array(this.players.length);
+        this.takens = new Array(this.players.length);
+        for (let i = 0; i < this.players.length; i++) {
+            let player = this.players[i];
+            this.hands[i] = new Array(this.numRounds);
+            this.playIndices[i] = new Array(this.numRounds);
+            this.takens[i] = new Array(this.numRounds);
+            for (let j = 0; j < this.numRounds; j++) {
+                this.hands[i][j] = new Array(this.numTricks[j]);
+                this.playIndices[i][j] = new Array(this.numTricks[j]);
+                this.takens[i][j] = new Array(this.numTricks[j]);
+
+                let hand = player.hands[j];
+                let taken = 0
+                for (let k = 0; k < this.numTricks[j]; k++) {
+                    this.hands[i][j][k] = hand;
+                    hand = hand.map(c => c);
+                    if (player.plays[j][k] !== undefined) {
+                        for (let l = 0; l < hand.length; l++) {
+                            if (hand[l].matches(player.plays[j][k])) {
+                                this.playIndices[i][j][k] = l;
+                                hand.splice(l, 1);
+                                break;
+                            }
+                        }
+                    } else if (k >= this.leaders[j].length) {
+                        if (k == 0) {
+                            this.leaders[j][k] = (this.dealers[j] + 1) % this.players.length;
+                        } else {
+                            this.leaders[j][k] = this.winners[j][k - 1];
+                        }
+                    }
+                    if (i == this.winners[j][k]) {
+                        taken++
+                    }
+                    this.takens[i][j][k] = taken;
+                }
+            }
+        }
+    }
+
+    wheel(y) {
+        this.deltaRound(Math.sign(y));
+    }
+
+    deltaRound(e) {
+        if (e == -1) {
+            if (this.selected1 == 0 && this.selected0 > 0) {
+                this.selectRound(this.selected0 - 1);
+                this.selectTrick(this.buttons1.length - 1);
+            } else if (this.selected1 > 0) {
+                this.selectTrick(this.selected1 - 1);
+            }
+        } else {
+            if (this.selected1 == this.buttons1.length - 1 && this.selected0 < this.buttons0.length - 1) {
+                this.selectRound(this.selected0 + 1);
+                this.selectTrick(0);
+            } else if (this.selected1 < this.buttons1.length - 1) {
+                this.selectTrick(this.selected1 + 1);
+            }
+        }
+    }
+
+    selectRound(i) {
+        if (i == this.selected0) {
+            return;
+        }
+
+        if (this.selected0 !== undefined) {
+            toggleButton(this.buttons0[this.selected0]);
+        }
+        this.selected0 = i;
+        toggleButton(this.buttons0[this.selected0]);
+
+        let div = document.getElementById('igPlaysTricksButtonContainer');
+        while (div.firstChild) {
+            div.removeChild(div.firstChild);
+        }
+        this.buttons1 = new Array(this.numTricks[i]);
+        for (let j = 1; j <= this.numTricks[i]; j++) {
+            let button = document.createElement('button');
+            button.classList.add(
+                'bg-white', 'rounded-lg', 'border', 'border-black', 'w-5', 'h-5',
+                'font-bold', 'text-sm', 'select-none', 'hover:bg-gray-300'
+            );
+            button.innerHTML = j;
+            button.addEventListener('click', () => {
+                this.selectTrick(j - 1);
+            });
+            div.appendChild(button);
+            this.buttons1[j - 1] = button;
+        }
+        this.selected1 = undefined;
+    }
+
+    selectTrick(j) {
+        if (j == this.selected1) {
+            return;
+        }
+
+        if (this.selected1 !== undefined) {
+            toggleButton(this.buttons1[this.selected1]);
+        }
+        this.selected1 = j;
+        toggleButton(this.buttons1[this.selected1]);
+    }
+
+    paintHeader(ctx, width) {
+        drawText(ctx, 'up card', width * this.columnXs[0], this.headerHeight / 2, 1, 1, font.small, 'black');
+        drawText(ctx, 'trump', width * this.columnXs[1], this.headerHeight / 2, 1, 1, font.small, 'black');
+        drawText(ctx, 'led/won', width * this.columnXs[2], this.headerHeight / 2, 1, 1, font.small, 'black');
+        drawText(ctx, 'hand', width * this.columnXs[3], this.headerHeight / 2, 1, 1, font.small, 'black');
+        drawText(ctx, 'tricks taken', width * this.columnXs[4], this.headerHeight / 2, 1, 1, font.small, 'black');
+    }
+
+    paintBody(ctx, width, height) {
+        let h = (height - this.headerHeight - 2) / this.players.length;
+        for (let i = 0; i <= this.players.length; i++) {
+            ctx.strokeStyle = '#C0C0C0';
+            drawLine(ctx, this.margin, this.headerHeight + i * h, width - this.margin, this.headerHeight + i * h);
+
+            if (i == this.players.length) {
+                break;
+            }
+
+            let player = this.players[i];
+            let h0 = this.headerHeight + player.index * h + h / 2;
+            let deckImgSmall = this.page.canvas.client.vars.deckImgSmall
+
+            // name
+            drawText(ctx, player.name, 2 * this.margin, h0, 0, 1, font.basic, this.options.teams ? colors[player.team] : 'black');
+
+            // up card
+            if (player.index == this.dealers[this.selected0]) {
+                drawCard(ctx, new Card(), width * this.columnXs[0] - 4, h0 + 30 - 4, smallCardScale, deckImgSmall, false, h0 + h / 2, undefined);
+                drawCard(ctx, new Card(), width * this.columnXs[0] - 2, h0 + 30 - 2, smallCardScale, deckImgSmall, false, h0 + h / 2, undefined);
+                drawCard(ctx, this.trumps[this.selected0], width * this.columnXs[0], h0 + 30, smallCardScale, deckImgSmall, false, h0 + h / 2, undefined);
+            }
+
+            // trump
+            let choices = player.trumpChoices[this.selected0]
+            for (let i = 0; i < choices.length; i++) {
+                drawTrumpChoice(ctx, choices[i], width * this.columnXs[1] - 2 + 4 * i, h0, 1, 1 - 2 * i)
+            }
+
+            // leader/winner/claim
+            let leader = player.index == this.leaders[this.selected0][this.selected1];
+            let winner = player.index == this.winners[this.selected0][this.selected1];
+            let claimer = player.index == this.claims[this.selected0] && this.selected1 == this.numTricks[this.selected0] - 1;
+            if (leader) {
+                ctx.fillStyle = 'rgb(200, 200, 200)';
+                drawOval(ctx, width * this.columnXs[2] - 8 - (winner ? 10 : 0) - (claimer ? 30 : 0), h0 - 8, 16, 16);
+                drawText(ctx, '>', width * this.columnXs[2] - (winner ? 10 : 0) - (claimer ? 30 : 0), h0, 1, 1, font.basic, 'black');
+            }
+            if (winner) {
+                ctx.fillStyle = 'rgb(175, 175, 0)';
+                drawOval(ctx, width * this.columnXs[2] - 8 + (leader ? 10 : 0), h0 - 8, 16, 16);
+                drawText(ctx, 'w', width * this.columnXs[2] + (leader ? 10 : 0), h0, 1, 1, font.basic, 'black');
+            }
+            if (claimer) {
+                ctx.fillStyle = 'rgb(225, 175, 225)';
+                drawOval(ctx, width * this.columnXs[2] - 25 + (leader ? 10 : 0), h0 - 12, 50, 24);
+                drawText(ctx, 'claim', width * this.columnXs[2] + (leader ? 10 : 0), h0, 1, 1, font.basic, 'black');
+            }
+
+            // hand
+            let hand = this.hands[i][this.selected0][this.selected1];
+            for (let j = 0; j < hand.length; j++) {
+                drawCard(ctx,
+                    hand[j],
+                    width * this.columnXs[3] + 30 * (j - (hand.length - 1) / 2),
+                    h0 + h / 2 + 15 - (j == this.playIndices[i][this.selected0][this.selected1] ? 15 : 0),
+                    smallCardScale, deckImgSmall, false, h0 + h / 2, undefined);
+            }
+            for (let j = 0; j < hand.length; j++) {
+                let x = width * this.columnXs[3] + 30 * (j - (hand.length - 1) / 2);
+                //let prob = this.selected1 < player.makingProbs[this.selected0].length ? player.makingProbs[this.selected0][this.selected1][j][1] : -1;
+                let prob = -1
+                if (prob != -1) {
+                    ctx.fillStyle = 'white';
+                    drawOval(ctx, x - 12, h0 - h / 2 + 15 - 8, 24, 16, true);
+                    ctx.strokeStyle = 'black';
+                    drawOval(ctx, x - 12, h0 - h / 2 + 15 - 8, 24, 16, false);
+                }
+                drawText(ctx,
+                    prob == -1 ? '' : (100 * prob).toFixed(0) + '%',
+                    x, h0 - h / 2 + 15,
+                    1, 1, font.small, `rgb(${255 * (1 - prob)}, ${0.75 * 255 * prob}, 0)`
+                );
+            }
+
+            // wants
+            let taken = this.takens[i][this.selected0][this.selected1] !== undefined ? this.takens[i][this.selected0][this.selected1] : '--';
+            drawText(ctx, taken, width * this.columnXs[4], h0, 1, 1, font.basic, 'black');
+        }
+    }
+
+    paint() {
+        this.panel.paint();
     }
 }

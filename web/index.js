@@ -547,7 +547,6 @@ class Game {
     }
 
     joinPlayer(user) {
-        //let player = new core.HumanPlayer(user, this.core);
         let player = this.core.createHumanPlayer(user)
         player.name = user.id;
 
@@ -561,8 +560,6 @@ class Game {
 
         player.commandJoin({mp: this.mp, id: this.id, mode: this.mode});
         this.players.addPlayer(player);
-
-        //this.players.updateOptions(this.core.options);
 
         this.listed = true;
     }

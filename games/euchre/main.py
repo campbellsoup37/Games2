@@ -1,16 +1,17 @@
 import numpy as np
+import os
 import sys
 
-iter = 'no_w_fit_5'
+iter = 'no_w_fit_7'
 job = 'fit'
 process_loop = True
 process_count = 1000
-exploration_count = 0
+exploration_count = 100
 greeds = np.concatenate([
-    np.linspace(0.5, 0.95, exploration_count),
-    np.full(process_count - exploration_count, 0.99)
+    np.linspace(0, 0.95, exploration_count),
+    np.full(process_count - exploration_count, 0.95)
 ])
-group_count = 10
+group_count = 100
 
 def run_process_loop():
     print('Starting process loop...')
@@ -29,21 +30,21 @@ def run_fit():
         iter=iter,
         log_rule=None,
         max_rounds=0,
-        load=True # process_num > 0
+        load=os.path.exists(f'C:/Users/campb/data/euchre/{iter}')
     )
     workshop.run(
         group_count=group_count,
         fit=True,
         save=True,
-        group_size=50,
-        game_log=True,
+        group_size=10,
+        game_log=False,
         epochs_per_fit=1,
         group_fit_window=1,
         groups_per_evaluation=group_count,
         groups_per_evaluation_data=1,
-        evaluation_size=100,
-        evaluation_log=True,
-        groups_per_save_data=group_count,
+        evaluation_size=10,
+        evaluation_log=False,
+        #groups_per_save_data=group_count,
         groups_per_save_to_web=group_count,
         batch_size=32,
         greeds=[process_greed] * group_count,
