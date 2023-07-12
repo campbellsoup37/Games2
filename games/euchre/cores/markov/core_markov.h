@@ -269,6 +269,7 @@ public:
 		int prevFollow;
 		bool prevShowedOut;
 		int prevPlayIndex;
+		int prevTrickWinner;
 	};
 
 	class UnevaluateTrick : public Undo {
@@ -339,7 +340,7 @@ public:
 
 class EuchrePlayerMarkov : public EuchrePlayer {
 public:
-	EuchrePlayerMarkov(EuchreCore* core, int index) : EuchrePlayer(core, index), shouldLog(false), greed(1.0) {}
+	EuchrePlayerMarkov(EuchreCore* core, int index) : EuchrePlayer(core, index), greed(1.0) {}
 
 	void chooseTrump(int phase, bool stuck) override;
 	void pickItUp() override;
@@ -347,19 +348,12 @@ public:
 
 	double roll() { return greed == 1.0 ? 1.0 : (double)core->rng() / core->rng.max(); }
 
-	Log* log() {
-		if (shouldLog) {
-			return &core->log;
-		}
-		return nullptr;
-	}
 	bool didIWin() {
 		return core->scores[index % (core->config.N / 2)] == core->winningScore;
 	}
 
 	const Card& chooseRandomCard();
 
-	bool shouldLog;
 	double greed;
 	std::vector<int> cardsPlayed;
 };

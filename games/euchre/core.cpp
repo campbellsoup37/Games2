@@ -4,12 +4,25 @@
 
 // EuchrePlayer
 
+Log* EuchrePlayer::log()
+{
+	if (shouldLog) {
+		return &core->log;
+	}
+	return nullptr;
+}
+
 // EuchreCore
 void EuchreCore::initialize() {
+	deck = createDeck();
 	for (int i = 0; i < config.N; i++) {
 		players.emplace_back(createPlayer(i));
 	}
 	scores.resize(config.N / 2);
+}
+
+std::shared_ptr<EuchreDeck> EuchreCore::createDeck() {
+	return std::make_shared<EuchreDeck>(rng, config.lowCard);
 }
 
 std::shared_ptr<EuchrePlayer> EuchreCore::createPlayer(int index) {
@@ -88,7 +101,7 @@ void EuchreCore::dealSetup() {
 		log.openDict();
 	}
 
-	deck.shuffle();
+	deck->shuffle();
 	for (auto& player : players) {
 		for (int i = 0; i < 4; i++) {
 			player->showedOut[i] = false;
@@ -101,12 +114,12 @@ void EuchreCore::dealSetup() {
 void EuchreCore::deal() {
 	for (int i = 0; i < config.h; i++) {
 		for (int j = 0; j < config.N; j++) {
-			Card& card = *deck.draw();
+			Card& card = *deck->draw();
 			players[j]->hand.insert(card);
 		}
 	}
 
-	upCard = *deck.draw();
+	upCard = *deck->draw();
 	// Do not remove upCard from deck.cardsNotPlayed here because it could still be played later
 
 	if (log.logging) {
@@ -160,7 +173,7 @@ void EuchreCore::applyTrumpChoice(int index, TrumpChoice& choice) {
 		if (trumpIndex == config.N - 1) {
 			if (trumpPhase == EuchreTrumpPhase::UP) {
 				trumpPhase = EuchreTrumpPhase::DOWN;
-				deck.cardsNotPlayed.erase(upCard);
+				deck->playCard(upCard);
 			}
 			else if (trumpPhase == EuchreTrumpPhase::DOWN) {
 				trumpPhase = EuchreTrumpPhase::PASSED;
@@ -234,6 +247,7 @@ void EuchreCore::playSetup() {
 
 void EuchreCore::trickSetup() {
 	follow = -1;
+	currentTrickWinner = -1;
 	playIndex = 0;
 	while ((leader + playIndex) % config.N == sittingOut) {
 		playIndex++;
@@ -259,8 +273,9 @@ Card& EuchreCore::getCardPlay(int index) {
 
 void EuchreCore::playCard(int index, const Card& card) {
 	players[index]->trick = card;
-	deck.cardsNotPlayed.erase(card);
+	deck->playCard(card);
 
+	int num = EuchreDeck::trumpAdjustedNum(card, trump);
 	int suit = EuchreDeck::trumpAdjustedSuit(card, trump);
 	if (follow != -1 && suit != follow) {
 		players[index]->showedOut[follow] = true;
@@ -270,21 +285,44 @@ void EuchreCore::playCard(int index, const Card& card) {
 		follow = suit;
 	}
 
+	if (currentTrickWinner == -1) {
+		currentTrickWinner = index;
+	}
+	else {
+		Card& currentWinningCard = players[currentTrickWinner]->trick;
+		int winningNum = EuchreDeck::trumpAdjustedNum(currentWinningCard, trump);
+		int winningSuit = EuchreDeck::trumpAdjustedSuit(currentWinningCard, trump);
+
+		bool isSuitGood = suit == trump || suit == winningSuit;
+		bool beats = (winningSuit != trump && suit == trump) || (num > winningNum);
+		if (isSuitGood && beats) {
+			currentTrickWinner = index;
+		}
+	}
+
 	do {
 		playIndex++;
 	} while (playIndex < config.N && (leader + playIndex) % config.N == sittingOut);
 	if (playIndex == config.N) {
+		leader = trickWinner();
 		evaluateTrick();
 	}
 }
 
 void EuchreCore::evaluateTrick() {
-	leader = trickWinner();
 	players[leader]->taken++;
+	trickIndex++;
+	evaluateRound();
+}
+
+void EuchreCore::evaluateRound() {
+	if (!config.fastRoundEvaluation && trickIndex < config.h) {
+		return;
+	}
 
 	int partner = (declarer + config.N / 2) % config.N;
 	int taken = players[declarer]->taken + players[partner]->taken;
-	int lost = trickIndex + 1 - taken;
+	int lost = trickIndex - taken;
 	if (lost > config.h / 2) {
 		roundResult = EuchreRoundResult::EUCHRED;
 	}
@@ -357,7 +395,6 @@ void EuchreCore::cardPlayed(int index, const Card& card) {
 			log.close();
 		}
 
-		trickIndex++;
 		if (roundResult == EuchreRoundResult::UNFINISHED) {
 			trickSetup();
 		}
@@ -394,30 +431,8 @@ void EuchreCore::whatCanIPlay(Hand& hand, std::vector<const Card*>& canPlay) {
 }
 
 int EuchreCore::trickWinner() {
-	int ans = -1;
 	if (playIndex < config.N) {
-		return ans;
+		return -1;
 	}
-	int winningSuit = follow;
-	int winningNum = -1;
-	for (auto& player : players) {
-		if (player->index == sittingOut) {
-			continue;
-		}
-
-		int suit = EuchreDeck::trumpAdjustedSuit(player->trick, trump);
-		int num = EuchreDeck::trumpAdjustedNum(player->trick, trump);
-		if (suit != follow && suit != trump) {
-			continue;
-		}
-		if (winningSuit == trump && suit != trump) {
-			continue;
-		}
-		if ((winningSuit != trump && suit == trump) || (num > winningNum)) {
-			ans = player->index;
-			winningSuit = suit;
-			winningNum = num;
-		}
-	}
-	return ans;
+	return currentTrickWinner;
 }

@@ -12,6 +12,7 @@ public:
 
 	std::string toString() const;
 	static std::string suitString(int suit);
+	static std::string numString(int num);
 
 	int num = 0;
 	int suit = 0;

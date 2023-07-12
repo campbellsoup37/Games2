@@ -14,18 +14,25 @@ public:
 	virtual void undo() {}
 
 	virtual double E() {
-		apply();
+		//std::cerr << "entered " << name() << std::endl;
 		if (logging()) {
 			log->openDict(name());
 			log->write("class", cls());
 			log->write("p", p);
+		}
+		apply();
+		//std::cerr << "applied " << name() << std::endl;
+		if (logging()) {
 			logExtraDetails();
 		}
 		double ans = 0;
 		for (auto& d : children()) {
+			//std::cerr << "entering " << (d ? d->name() : "nullptr") << std::endl;
 			ans += d->p * d->E();
+			//std::cerr << "exited " << d->name() << std::endl;
 		}
 		undo();
+		//std::cerr << "undid " << name() << std::endl;
 
 		if (logging()) {
 			log->write("E", ans);
@@ -33,27 +40,32 @@ public:
 		}
 
 		cachedE = ans;
+		//std::cerr << "exiting " << name() << std::endl;
 
 		return ans;
 	}
 
 	std::shared_ptr<Diff> best() {
+		//std::cerr << "entered " << name() << std::endl;
 		if (logging()) {
 			log->write("class", cls());
 			log->openDict(name());
 			logExtraDetails();
 		}
 
-		std::shared_ptr<Diff> bestD;
+		std::shared_ptr<Diff> bestD = nullptr;
 		double bestE = std::numeric_limits<double>::lowest();
 
 		for (auto& d : children()) {
+			//std::cerr << "entering " << (d ? d->name() : "nullptr") << std::endl;
 			double e = d->E();
 			if (bestD == nullptr || e > bestE) {
 				bestD = d;
 				bestE = e;
 			}
+			//std::cerr << "exited " << d->name() << std::endl;
 		}
+		//std::cerr << "exiting " << name() << ", best=" << bestD << (bestD ? " (" + bestD->name() + ")" : "") << std::endl;
 
 		if (logging()) {
 			log->write("best", bestD->name());

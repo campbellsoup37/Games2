@@ -6,6 +6,7 @@
 #include "core.h"
 #include "cores/markov/core_markov.h"
 #include "cores/random/core_random.h"
+#include "cores/oit/core_oit.h"
 
 namespace py = pybind11;
 
@@ -38,19 +39,24 @@ PYBIND11_MODULE(_euchre, m) {
 	py::module::import("_games");
 
 	py::class_<EuchreConfig>(m, "EuchreConfig")
-		.def(py::init<bool, int, unsigned>())
+		.def(py::init<bool, int, bool, unsigned>())
 		.def_readwrite("N", &EuchreConfig::N)
 		.def_readwrite("h", &EuchreConfig::h)
 		.def_readwrite("lowCard", &EuchreConfig::lowCard)
 		.def_readwrite("winningPoints", &EuchreConfig::winningPoints)
 		.def_readwrite("stickTheDealer", &EuchreConfig::stickTheDealer)
 		.def_readwrite("maxRounds", &EuchreConfig::maxRounds)
+		.def_readwrite("fastRoundEvaluation", &EuchreConfig::fastRoundEvaluation)
 		.def_readwrite("seed", &EuchreConfig::seed);
+
+	// core random
 
 	py::class_<EuchreCoreRandom>(m, "EuchreCoreRandom")
 		.def(py::init<EuchreConfig>())
 		.def("initialize", &EuchreCoreRandom::initialize)
 		.def("run", &EuchreCoreRandom::run);
+
+	// core markov
 
 	py::class_<EuchreCoreMarkov, PyEuchreCoreMarkov>(m, "EuchreCoreMarkov")
 		.def(py::init<EuchreConfig>())
@@ -113,4 +119,69 @@ PYBIND11_MODULE(_euchre, m) {
 	py::class_<RNN, NeuralNetwork>(m, "RNN");
 
 	py::class_<WNN, NeuralNetwork>(m, "WNN");
+
+	// core oit
+
+	py::class_<EuchreCoreOIT>(m, "EuchreCoreOIT")
+		.def(py::init<EuchreConfig>())
+		.def_readwrite("config", &EuchreCoreMarkov::config)
+		.def("initialize", &EuchreCoreOIT::initialize)
+		.def_readwrite("emptyOIn", &EuchreCoreOIT::emptyOIn)
+		.def_readwrite("emptyIIn", &EuchreCoreOIT::emptyIIn)
+		.def_readwrite("emptyTIn", &EuchreCoreOIT::emptyTIn)
+		.def_readwrite("emptyWIn", &EuchreCoreOIT::emptyWIn)
+		.def("clearData", &EuchreCoreOIT::clearData)
+		.def_readwrite("onnCpp", &EuchreCoreOIT::onn)
+		.def_readwrite("innCpp", &EuchreCoreOIT::inn)
+		.def_readwrite("tnnCpp", &EuchreCoreOIT::tnn)
+		.def_readwrite("wnnCpp", &EuchreCoreOIT::wnn)
+		.def_readwrite("oData", &EuchreCoreOIT::oData)
+		.def_readwrite("iData", &EuchreCoreOIT::iData)
+		.def_readwrite("tData", &EuchreCoreOIT::tData)
+		.def_readwrite("wData", &EuchreCoreOIT::wData)
+		.def_property_readonly("players",
+			[](EuchreCoreOIT& self) -> std::vector<EuchrePlayerOIT*> {
+				std::vector<EuchrePlayerOIT*> ans;
+				for (auto& player : self.players) {
+					ans.push_back(dynamic_cast<EuchrePlayerOIT*>(&*player));
+				}
+				return ans;
+			})
+		.def_readwrite("scores", &EuchreCoreOIT::scores)
+				.def("run", &EuchreCoreOIT::run);
+
+	py::class_<EuchrePlayerOIT>(m, "EuchrePlayerOIT")
+		.def_readwrite("greed", &EuchrePlayerOIT::greed)
+		.def_readwrite("shouldLog", &EuchrePlayerOIT::shouldLog);
+
+	py::class_<OITFeatureShowedOuts, FeatureDense>(m, "OITFeatureShowedOuts")
+		.def_readwrite("name", &OITFeatureShowedOuts::name)
+		.def_readwrite("d", &OITFeatureShowedOuts::d)
+		.def_readwrite("offset", &OITFeatureShowedOuts::offset)
+		.def("labels", &OITFeatureShowedOuts::labels)
+		.def_readwrite("values", &OITFeatureShowedOuts::values);
+
+	py::class_<OITFeatureUpCardStatus, FeatureOneHot>(m, "OITFeatureUpCardStatus")
+		.def_readwrite("name", &OITFeatureUpCardStatus::name)
+		.def_readwrite("d", &OITFeatureUpCardStatus::d)
+		.def_readwrite("offset", &OITFeatureUpCardStatus::offset)
+		.def("labels", &OITFeatureUpCardStatus::labels)
+		.def_readwrite("min", &OITFeatureUpCardStatus::min)
+		.def_readwrite("value", &OITFeatureUpCardStatus::value);
+
+	py::class_<OITFeatureCard, FeatureOneHot>(m, "OITFeatureCard")
+		.def_readwrite("name", &OITFeatureCard::name)
+		.def_readwrite("d", &OITFeatureCard::d)
+		.def_readwrite("offset", &OITFeatureCard::offset)
+		.def("labels", &OITFeatureCard::labels)
+		.def_readwrite("min", &OITFeatureCard::min)
+		.def_readwrite("value", &OITFeatureCard::value);
+
+	py::class_<OITONN, NeuralNetwork>(m, "OITONN");
+
+	py::class_<OITINN, NeuralNetwork>(m, "OITINN");
+
+	py::class_<OITTNN, NeuralNetwork>(m, "OITTNN");
+
+	py::class_<OITWNN, NeuralNetwork>(m, "OITWNN");
 }

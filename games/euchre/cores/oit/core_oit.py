@@ -1,7 +1,7 @@
 import numpy as np
 import time
 
-from _euchre import EuchreConfig, EuchreCoreMarkov as _EuchreCoreMarkov
+from _euchre import EuchreConfig, EuchreCoreOIT as _EuchreCoreOIT
 import games
 
 def data_to_in_tf_args(data):
@@ -23,12 +23,13 @@ def data_to_in_tf_args(data):
 
     return [indices, values, dense_shape]
 
-class EuchreCoreMarkov(_EuchreCoreMarkov):
+class EuchreCoreOIT(_EuchreCoreOIT):
     def __init__(self, config, runner_name=None):
-        _EuchreCoreMarkov.__init__(self, config)
+        _EuchreCoreOIT.__init__(self, config)
         self.models = None
         self.data_names = None
         self.runner_name = runner_name or ''
+        self.scores_cache = []
 
     def set_models(self, raw_models):
         self.models = []
@@ -59,6 +60,11 @@ class EuchreCoreMarkov(_EuchreCoreMarkov):
     def clear_data(self):
         self.clearData()
 
+    def gather_scores(self):
+        ans = [x for x in self.scores_cache]
+        self.scores_cache = []
+        return ans
+
     def set_log_rule(self, log_rule_array):
         for shouldLog, player in zip(log_rule_array, self.players):
             player.shouldLog = shouldLog
@@ -72,18 +78,18 @@ class EuchreCoreMarkov(_EuchreCoreMarkov):
         greeds = greeds or [1.0] * self.config.N
         t0 = time.time()
         self.set_greeds(greeds)
-        super(EuchreCoreMarkov, self).run(log)
+        super(EuchreCoreOIT, self).run(log)
         t1 = time.time()
         print(f'Game {game_name} done in {int(t1 - t0)} seconds by {self.runner_name}')
         if is_evaluation:
             self.clearData()
-            return self.scores
+            self.scores_cache += [self.scores]
 
     def ipdb(self):
         import ipdb; ipdb.set_trace()
 
-def create_euchre_core_markov(name, **args):
+def create_euchre_core_oit(name, **args):
     configCpp = EuchreConfig(*args['args_list'])
-    core = EuchreCoreMarkov(configCpp, name)
+    core = EuchreCoreOIT(configCpp, name)
     core.initialize()
     return core

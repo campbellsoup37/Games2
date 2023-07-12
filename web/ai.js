@@ -1192,6 +1192,36 @@ class StrategyModuleEuchreCoreMarkov extends StrategyModuleEuchreCore {
     }
 }
 
+class StrategyModuleEuchreCoreOIT extends StrategyModuleEuchreCore {
+    constructor() { super() }
+
+    setCoreCpp() {
+        let maxRounds = 0
+        let seed = Math.floor(Math.random() * 2147483648)
+        let log = true
+        let logRule = [true, true, true, true]
+        let coreCpp = new _euchre.EuchreCoreOIT(maxRounds, seed, log, logRule)
+
+        let weights = {}
+        let mtime
+        for (let name of ['onn', 'inn', 'tnn', 'wnn']) {
+            weights[name] = []
+            let nn = new ml.NNModel(`./models/euchre/${name}.txt`, [])
+            for (let layer of nn.layers) {
+                if (!layer.input) {
+                    weights[name].push([layer.w.matrix, layer.b.vec])
+                }
+            }
+            mtime = nn.mtime
+        }
+        coreCpp.setWeights(weights)
+
+        this.core.incomingChat(undefined, `StrategyModuleEuchreCoreOIT weights last modified ${mtime}`)
+
+        this.core.coreCpp = coreCpp
+    }
+}
+
 // entry point -----------------------------------------------------------------
 function buildModules(mode, params) {
     switch (mode) {
@@ -1211,7 +1241,7 @@ function buildModules(mode, params) {
             return new Array(params.N).fill(0).map(x => new StrategyModuleDumb());
 
         case 'Euchre':
-            return new Array(params.N).fill(0).map(x => new StrategyModuleEuchreCoreMarkov());
+            return new Array(params.N).fill(0).map(x => new StrategyModuleEuchreCoreOIT());
     }
 }
 

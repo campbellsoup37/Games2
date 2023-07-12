@@ -160,8 +160,8 @@ std::vector<std::string> FeatureShowedOuts::labels() {
 TIn::TIn(const EuchreCoreMarkov& core, int trump) :
 	trump(trump),
 	me(*this, "me", core.config.N - 1),
-	myHand(*this, "my_hand", core.deck.lowCard, trump),
-	upCard(*this, "up_card", false, core.deck.lowCard, trump, true),
+	myHand(*this, "my_hand", core.deck->lowCard, trump),
+	upCard(*this, "up_card", false, core.deck->lowCard, trump, true),
 	phase(*this, "phase", 2, 1),
 	turn(*this, "turn", core.config.N - 1)
 {
@@ -179,8 +179,8 @@ TIn::TeamFeatures::TeamFeatures(TIn& tIn, const EuchreCoreMarkov& core, std::str
 PIn::PIn(const EuchreCoreMarkov& core, int trump) :
 	trump(trump),
 	me(*this, "me", core.config.N - 1),
-	myHand(*this, "my_hand", core.deck.lowCard, trump),
-	upCard(*this, "up_card", false, core.deck.lowCard, trump, false),
+	myHand(*this, "my_hand", core.deck->lowCard, trump),
+	upCard(*this, "up_card", false, core.deck->lowCard, trump, false),
 	declarer(*this, "declarer", core.config.N - 1),
 	alone(*this, "alone", 1),
 	dealer(*this, "dealer", core.config.N - 1)
@@ -199,9 +199,9 @@ PIn::TeamFeatures::TeamFeatures(PIn& pIn, const EuchreCoreMarkov& core, std::str
 {}
 
 PIn::PlayerFeatures::PlayerFeatures(PIn& pIn, const EuchreCoreMarkov& core, std::string i) :
-	trick(pIn, i + "_trick", true, core.deck.lowCard, pIn.trump, false),
+	trick(pIn, i + "_trick", true, core.deck->lowCard, pIn.trump, false),
 	showedOuts(pIn, i + "_showed_outs", pIn.trump),
-	cardsPlayed(pIn, i + "_cards_played", core.deck.lowCard, pIn.trump)
+	cardsPlayed(pIn, i + "_cards_played", core.deck->lowCard, pIn.trump)
 {}
 
 // rIn
@@ -210,8 +210,8 @@ RIn::RIn(const EuchreCoreMarkov& core, int trump, int leader) :
 	trump(trump),
 	leader(leader),
 	me(*this, "me", core.config.N - 1),
-	myHand(*this, "my_hand", core.deck.lowCard, trump),
-	upCard(*this, "up_card", false, core.deck.lowCard, trump, false),
+	myHand(*this, "my_hand", core.deck->lowCard, trump),
+	upCard(*this, "up_card", false, core.deck->lowCard, trump, false),
 	declarer(*this, "declarer", core.config.N - 1),
 	alone(*this, "alone", 1),
 	dealer(*this, "dealer", core.config.N - 1)
@@ -231,7 +231,7 @@ RIn::TeamFeatures::TeamFeatures(RIn& rIn, const EuchreCoreMarkov& core, std::str
 
 RIn::PlayerFeatures::PlayerFeatures(RIn& rIn, const EuchreCoreMarkov& core, std::string i) :
 	showedOuts(rIn, i + "_showed_outs", rIn.trump),
-	cardsPlayed(rIn, i + "_cards_played", core.deck.lowCard, rIn.trump)
+	cardsPlayed(rIn, i + "_cards_played", core.deck->lowCard, rIn.trump)
 {}
 
 // wIn
@@ -365,7 +365,7 @@ void EuchreCoreMarkov::UnapplyTrumpChoice::undo() {
 		core.trumpIndex = (core.trumpIndex + core.config.N - 1) % core.config.N;
 	}
 	if (core.trumpPhase != prevTrumpPhase) {
-		core.deck.cardsNotPlayed.insert(core.upCard);
+		core.deck->unplayCard(core.upCard);
 		core.trumpPhase = prevTrumpPhase;
 	}
 	core.trump = -1;
@@ -469,10 +469,10 @@ void EuchreCoreMarkov::cardPlayed(int index, const Card& card) {
 	dynamic_cast<EuchrePlayerMarkov&>(*player).cardsPlayed.push_back(card.code);
 
 	std::shared_ptr<std::vector<double>> out = std::make_shared<std::vector<double>>();
-	for (int i = 0; i < 4 * (13 - deck.lowCard); i++) {
+	for (int i = 0; i < 4 * (13 - deck->lowCard); i++) {
 		out->push_back(0.0);
 	}
-	int i = adjustedCode(card.code, trump, deck.lowCard);
+	int i = adjustedCode(card.code, trump, deck->lowCard);
 	(*out)[i] = 1.0;
 
 	for (auto& owner : players) {
@@ -529,20 +529,22 @@ void EuchreCoreMarkov::playCardForPlayerPIn(std::shared_ptr<EuchrePlayer> owner,
 }
 
 EuchreCoreMarkov::UnplayCard::UnplayCard(EuchreCoreMarkov& core, std::shared_ptr<EuchrePlayer> owner, std::shared_ptr<EuchrePlayer> player, const Card& card)
-	: Undo(core), owner(owner), player(player), card(card), prevFollow(core.follow), prevShowedOut(prevFollow != -1 ? player->showedOut[prevFollow] : false), prevPlayIndex(core.playIndex)
+	: Undo(core), owner(owner), player(player), card(card), prevFollow(core.follow), prevShowedOut(prevFollow != -1 ? player->showedOut[prevFollow] : false), 
+	prevPlayIndex(core.playIndex), prevTrickWinner(core.currentTrickWinner)
 {
 	next = std::make_shared<EuchreCoreMarkov::UnevaluateTrick>(core, owner);
 }
 
 void EuchreCoreMarkov::UnplayCard::undo() {
 	// base core
+	core.currentTrickWinner = prevTrickWinner;
 	core.playIndex = prevPlayIndex;
 	core.follow = prevFollow;
 	if (prevFollow != -1) {
 		player->showedOut[prevFollow] = prevShowedOut;
 	}
 
-	core.deck.cardsNotPlayed.insert(card);
+	core.deck->unplayCard(card);
 
 	// pIn
 	auto& pIn = core.pIns[owner->index];
@@ -594,6 +596,7 @@ void EuchreCoreMarkov::UnevaluateTrick::undo() {
 	int newLeader = core.leader;
 
 	core.players[newLeader]->taken--;
+	core.trickIndex--;
 	core.leader = prevLeader;
 
 	// rIn
@@ -713,8 +716,8 @@ void EuchreCoreMarkov::logDebugDetails() {
 	}
 	log.close();
 
-	log.openFlatList("deck.cardsNotPlayed");
-	for (auto& card : deck.cardsNotPlayed) {
+	log.openFlatList("deck->cardsNotPlayed");
+	for (auto& card : deck->cardsNotPlayed) {
 		log.write(card.toString());
 	}
 	log.close();
@@ -992,7 +995,7 @@ std::vector<std::shared_ptr<Diff>> PlayDiff::children() {
 			int declarer = core.declarer;
 			int partner = (declarer + N / 2) % N;
 			int taken = core.players[declarer]->taken + core.players[partner]->taken;
-			int lost = core.trickIndex + 1 - taken;
+			int lost = core.trickIndex - taken;
 
 			std::shared_ptr<std::vector<double>> probs = core.rModel(*core.playRIns[player.index][core.leader]);
 
@@ -1026,7 +1029,7 @@ std::vector<std::shared_ptr<Diff>> PlayDiff::children() {
 		if (nextIndex == core.sittingOut) {
 			nextIndex = (nextIndex + 1) % core.config.N;
 		}
-		for (const Card& card2 : core.deck.cardsNotPlayed) {
+		for (const Card& card2 : core.deck->cardsNotPlayed) {
 			if (player.hand.count(card2) > 0) {
 				continue;
 			}

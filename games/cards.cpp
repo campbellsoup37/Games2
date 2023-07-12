@@ -20,6 +20,10 @@ std::string Card::suitString(int suit) {
 	return suits[suit];
 }
 
+std::string Card::numString(int num) {
+	return nums[num];
+}
+
 // Deck
 void Deck::initialize(std::vector<int>& codes) {
 	// Standard deck:

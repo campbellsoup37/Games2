@@ -172,31 +172,27 @@ class NNModel:
         # evaluate
         out_evaluation = pd.DataFrame(self.nn(self.evaluation_data_sparse)).reset_index().rename(columns={'index': 'in_index'})
         hdf5.write_table(out_evaluation, history_fname, f'data/{self.name}/out_evaluation', mode='a')
+        
+class ONN(NNModel):
+    def generate_initial(self, reference_core):
+        self.generate(reference_core.emptyOIn.size(), [50], len(reference_core.onnCpp.labels()), 'sigmoid')
 
+    def load_schema(self, reference_core, history_fname):
+        super().load_schema(reference_core.emptyOIn, reference_core.onnCpp.labels(), history_fname)
+        
+class INN(NNModel):
+    def generate_initial(self, reference_core):
+        self.generate(reference_core.emptyIIn.size(), [50], len(reference_core.innCpp.labels()), 'softmax')
+
+    def load_schema(self, reference_core, history_fname):
+        super().load_schema(reference_core.emptyIIn, reference_core.innCpp.labels(), history_fname)
+        
 class TNN(NNModel):
     def generate_initial(self, reference_core):
-        self.generate(reference_core.emptyTIn.size(), [25], len(reference_core.tnnCpp.labels()), 'softmax')
+        self.generate(reference_core.emptyTIn.size(), [50], len(reference_core.tnnCpp.labels()), 'softmax')
 
-class PNN(NNModel):
-    def generate_initial(self, reference_core):
-        self.generate(reference_core.emptyPIn.size(), [125], len(reference_core.pnnCpp.labels()), 'softmax')
-
-class RNN(NNModel):
-    def generate_initial(self, reference_core):
-        self.generate(reference_core.emptyRIn.size(), [75], len(reference_core.rnnCpp.labels()), 'softmax')
-
-    def get_evaluation_data(self):
-        return [
-            {
-                'my_hand': ['JC', 'QC', 'KC', 'AC', 'JS'],
-                'dealer': '3',
-            },
-            {
-                'my_hand': ['JC', 'QC', 'KC', 'AC', 'JS'],
-                'alone': '1',
-                'dealer': '3',
-            }
-        ]
+    def load_schema(self, reference_core, history_fname):
+        super().load_schema(reference_core.emptyTIn, reference_core.tnnCpp.labels(), history_fname)
 
 class WNN(NNModel):
     def generate_initial(self, reference_core):
@@ -217,32 +213,31 @@ class WNN(NNModel):
 
         self.create_raw_layers()
 
+    def load_schema(self, reference_core, history_fname):
+        super().load_schema(reference_core.emptyWIn, reference_core.wnnCpp.labels(), history_fname)
+
     def fit(self, epochs, batch_size):
         return
 
 class NNModels:
     def __init__(self):
+        self.onn = ONN('onn')
+        self.inn = INN('inn')
         self.tnn = TNN('tnn')
-        self.pnn = PNN('pnn')
-        self.rnn = RNN('rnn')
         self.wnn = WNN('wnn')
-        self.models = [self.tnn, self.pnn, self.rnn, self.wnn]
+        self.models = [self.onn, self.inn, self.tnn, self.wnn]
     
     def generate(self, reference_core):
-        self.tnn.generate_initial(reference_core)
-        self.pnn.generate_initial(reference_core)
-        self.rnn.generate_initial(reference_core)
-        self.wnn.generate_initial(reference_core)
+        for model in self.models:
+            model.generate_initial(reference_core)
 
     def load(self, model_dir):
         for model in self.models:
             model.load(model_dir)
 
     def load_schema(self, reference_core, history_fname):
-        self.tnn.load_schema(reference_core.emptyTIn, reference_core.tnnCpp.labels(), history_fname)
-        self.pnn.load_schema(reference_core.emptyPIn, reference_core.pnnCpp.labels(), history_fname)
-        self.rnn.load_schema(reference_core.emptyRIn, reference_core.rnnCpp.labels(), history_fname)
-        self.wnn.load_schema(reference_core.emptyWIn, reference_core.wnnCpp.labels(), history_fname)
+        for model in self.models:
+            model.load_schema(reference_core, history_fname)
 
     def get_raw_models(self):
         return [model.raw_layers for model in self.models]

@@ -114,6 +114,15 @@ public:
 	}
 };
 
+class Sigmoid : public ActivationFunction {
+public:
+	void apply(std::vector<double>& vec) override {
+		for (int i = 0; i < (int)vec.size(); i++) {
+			vec[i] = 1.0 / (1.0 + exp(-vec[i]));
+		}
+	}
+};
+
 class Layer {
 public:
 	Layer(std::string activation) {
@@ -122,6 +131,9 @@ public:
 		}
 		else if (activation == "softmax") {
 			act = std::make_shared<Softmax>();
+		}
+		else if (activation == "sigmoid") {
+			act = std::make_shared<Sigmoid>();
 		}
 		else {
 			std::stringstream ss;
@@ -208,6 +220,12 @@ public:
 	NeuralNetwork(const std::string& name) : name(name) {}
 
 	std::shared_ptr<std::vector<double>> operator()(const SparseVector& vec) {
+		if (layers.size() == 0) {
+			std::stringstream ss;
+			ss << name << ": evaluating -- no layers.";
+			throw std::runtime_error(ss.str());
+		}
+
 		std::shared_ptr<std::vector<double>> out = layers[0](vec, name);
 		for (int i = 1; i < (int)layers.size(); i++) {
 			out = layers[i](*out, name);

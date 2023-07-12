@@ -11,8 +11,9 @@
           '../games/cards.cpp', 
           '../games/euchre/core.cpp', 
           '../games/ml.cpp', 
-          '../games/euchre/cores/markov/core_markov.cpp', 
           '../games/euchre/cores/random/core_random.cpp',
+          '../games/euchre/cores/markov/core_markov.cpp', 
+          '../games/euchre/cores/oit/core_oit.cpp',
           '../games/euchre/jseuchre.cpp'
       ],
       'conditions': [

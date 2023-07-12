@@ -5,15 +5,15 @@ import sys
 import time
 
 from _euchre import EuchreConfig
-from euchre.cores.markov.core_markov import EuchreCoreMarkov, create_euchre_core_markov
-from euchre.cores.markov.models import NNModels
-from games.workshop import Workshop as BaseWorkshop, LocalRunner
+from euchre.cores.oit.core_oit import EuchreCoreOIT, create_euchre_core_oit
+from euchre.cores.oit.models import NNModels
+from games.workshop import Workshop as BaseWorkshop, DirectRunner, LocalRunner
 
 from tools import hdf5
 
 euchre_dir = 'C:/Users/campb/data/euchre'
 
-class EuchreCoreMarkovWorkshop(BaseWorkshop):
+class EuchreCoreOITWorkshop(BaseWorkshop):
     project_name = 'euchre'
 
     def __init__(self, iter=None, stick_the_dealer=True, log_rule=None, max_rounds=0, load=True, seed=None):
@@ -25,8 +25,8 @@ class EuchreCoreMarkovWorkshop(BaseWorkshop):
         seed = seed or int(time.time())
         self.runner_config = {
             'class': LocalRunner,
-            'factory': create_euchre_core_markov,
-            'args_list': [stick_the_dealer, max_rounds, True, seed]
+            'factory': create_euchre_core_oit,
+            'args_list': [stick_the_dealer, max_rounds, False, seed]
         }
         self.config = EuchreConfig(*self.runner_config['args_list'])
         
@@ -42,12 +42,12 @@ class EuchreCoreMarkovWorkshop(BaseWorkshop):
         if self.log_rule is not None:
             runner.core_command('set_log_rule', log_rule_array=self.log_rule)
         runner.wait_until_ready()
-
+        
         runner.core_command('set_models', raw_models=self.models.get_raw_models())
 
     def create_models(self, write_schema):
         self.models = NNModels()
-        dummy_core = EuchreCoreMarkov(self.config)
+        dummy_core = EuchreCoreOIT(self.config)
         dummy_core.initialize()
         if self.load:
             self.models.load(self.model_dir)
@@ -113,11 +113,14 @@ class EuchreCoreMarkovWorkshop(BaseWorkshop):
                         log = f'{self.log_dir}/evaluation.{name}.txt'
                     self.run_one_game(game_name=name, log=log, greeds=rotated_greeds, is_evaluation=True)
                 self.wait_for_runners()
+                for runner in self.runners:
+                    ret = runner.core_command('gather_scores')
+                self.wait_for_runners()
                 all_scores = []
                 for runner in self.runners:
                     ret = runner.get_return_data()
                     if ret is not None:
-                        all_scores += [ret]
+                        all_scores += ret
                 for h, runner_scores in enumerate(all_scores):
                     for team, score in enumerate(runner_scores):
                         scores.loc[h, rotation, team] = score
@@ -147,16 +150,16 @@ class EuchreCoreMarkovWorkshop(BaseWorkshop):
 
 ### main
 
-iter = 'test'
-job = 'regression'
+iter = 'oit_1'
+job = 'fit'
 process_loop = True
 process_count = 1000
 exploration_count = 0
 greeds = np.concatenate([
     np.linspace(0, 0.95, exploration_count),
-    np.full(process_count - exploration_count, 0.95)
+    np.full(process_count - exploration_count, 1.0)
 ])
-group_count = 100
+group_count = 10
 
 def run_process_loop():
     print('Starting process loop...')
@@ -171,11 +174,11 @@ def run_fit():
     process_num = int(sys.argv[1]) if len(sys.argv) > 1 else -1
     process_greed = float(sys.argv[2]) if len(sys.argv) > 2 else 1.0
     print(f'Running process {process_num} with greed {process_greed}')
-    workshop = euchre.EuchreCoreMarkovWorkshop(
+    workshop = euchre.EuchreCoreOITWorkshop(
         iter=iter,
         log_rule=None,
         max_rounds=0,
-        load=os.path.exists(f'C:/Users/campb/data/euchre/{iter}/1/models/rnn')
+        load=os.path.exists(f'C:/Users/campb/data/euchre/{iter}/1/models/wnn')
     )
     workshop.run(
         group_count=group_count,
@@ -186,8 +189,8 @@ def run_fit():
         epochs_per_fit=1,
         group_fit_window=1,
         groups_per_evaluation=group_count,
-        groups_per_evaluation_data=1,
-        evaluation_size=10,
+        #groups_per_evaluation_data=group_count,
+        evaluation_size=100,
         evaluation_log=False,
         #groups_per_save_data=group_count,
         groups_per_save_to_web=group_count,
@@ -199,11 +202,12 @@ def run_fit():
 def run_test():
     import euchre
 
-    workshop = euchre.EuchreCoreMarkovWorkshop(
+    workshop = euchre.EuchreCoreOITWorkshop(
         iter=iter,
-        log_rule = lambda i: False, 
+        log_rule = lambda i: True, 
         max_rounds=0,
-        load=True,
+        #load=os.path.exists(f'C:/Users/campb/data/euchre/{iter}/1/models/wnn'),
+        load=False,
         seed=420
     )
     workshop.run(
@@ -214,12 +218,13 @@ def run_test():
         group_size=1,
         greeds=[1.0, 1.0, 1.0, 1.0],
         num_processes=1,
+        groups_per_save_data=1,
     )
 
 def regression_test():
     import euchre
-    
-    workshop = euchre.EuchreCoreMarkovWorkshop(
+
+    workshop = euchre.EuchreCoreOITWorkshop(
         iter=iter,
         log_rule = lambda i: True, 
         max_rounds=0,

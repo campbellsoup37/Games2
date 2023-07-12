@@ -28,6 +28,7 @@ pybind11_add_module(
 	games/euchre/core.cpp
 	games/ml.cpp
 	games/euchre/cores/markov/core_markov.cpp
+	games/euchre/cores/oit/core_oit.cpp
 	games/euchre/cores/random/core_random.cpp
 	games/euchre/pyeuchre.cpp
 )

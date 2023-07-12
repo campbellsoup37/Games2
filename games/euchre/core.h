@@ -14,6 +14,7 @@ class EuchreConfig {
 public:
 	bool stickTheDealer;
 	int maxRounds;
+	bool fastRoundEvaluation;
 
 	unsigned seed;
 
@@ -29,7 +30,7 @@ class EuchreDeck : public Deck {
 public:
 	EuchreDeck(std::mt19937& rng, int lowCard) : Deck(1, rng), lowCard(lowCard) {}
 
-	void initialize(std::vector<int>& codes) {
+	virtual void initialize(std::vector<int>& codes) override {
 		cardsNotPlayed.clear();
 		for (int i = 0; i < 4; i++) {
 			for (int j = lowCard; j <= 12; j++) {
@@ -38,6 +39,14 @@ public:
 				cardsNotPlayed.insert(code);
 			}
 		}
+	}
+
+	virtual void playCard(const Card& card) {
+		cardsNotPlayed.erase(card);
+	}
+
+	virtual void unplayCard(const Card& card) {
+		cardsNotPlayed.insert(card);
 	}
 
 	static int trumpAdjustedSuit(const Card& card, int trump) {
@@ -90,11 +99,13 @@ public:
 
 class EuchrePlayer {
 public:
-	EuchrePlayer(EuchreCore* core, int index) : core(core), index(index) {}
+	EuchrePlayer(EuchreCore* core, int index) : core(core), index(index), shouldLog(false) {}
 
 	virtual void chooseTrump(int phase, bool stuck) {}
 	virtual void pickItUp() {}
 	virtual void play(std::vector<const Card*>& canPlay) {}
+
+	Log* log();
 
 	EuchreCore* core;
 
@@ -108,14 +119,17 @@ public:
 	Card readiedPlay;
 
 	bool showedOut[4] = {};
+
+	bool shouldLog;
 };
 
 enum EuchreRoundResult { UNFINISHED = -1, EUCHRED = 0, MADE = 1, MADE_ALL = 2 };
 
 class EuchreCore {
 public:
-	EuchreCore(EuchreConfig& config) : config(config), rng(config.seed), deck(rng, config.lowCard) {}
+	EuchreCore(EuchreConfig& config) : config(config), rng(config.seed) {}
 	virtual void initialize();
+	virtual std::shared_ptr<EuchreDeck> createDeck();
 	virtual std::shared_ptr<EuchrePlayer> createPlayer(int index);
 
 	// Run
@@ -146,6 +160,7 @@ public:
 	virtual Card& getCardPlay(int index);
 	virtual void playCard(int index, const Card& card);
 	virtual void evaluateTrick();
+	virtual void evaluateRound();
 	virtual void score();
 	virtual void cardPlayed(int index, const Card& card);
 	virtual void scored();
@@ -158,7 +173,7 @@ public:
 	Log log;
 
 	std::mt19937 rng;
-	EuchreDeck deck;
+	std::shared_ptr<EuchreDeck> deck;
 	std::vector<std::shared_ptr<EuchrePlayer>> players;
 	std::vector<int> scores;
 
@@ -175,6 +190,7 @@ public:
 	int sittingOut;
 	int trickIndex;
 	int playIndex;
+	int currentTrickWinner;
 	EuchreRoundResult roundResult;
 	int leader;
 	int follow;

@@ -1,8 +1,9 @@
 #include <node.h>
 #include <node_object_wrap.h>
 
-#include "cores/markov/core_markov.h"
 #include "cores/random/core_random.h"
+#include "cores/markov/core_markov.h"
+#include "cores/oit/core_oit.h"
 
 inline v8::Local<v8::String> v8String(v8::Isolate* isolate, const std::string& str) {
 #ifdef _WIN32
@@ -90,9 +91,10 @@ void JsEuchreCore<CoreType, className>::New(const v8::FunctionCallbackInfo<v8::V
 
     bool stickTheDealer = true;
     int maxRounds = args[0]->NumberValue(context).FromMaybe(0);
+    bool fastRoundEvaluation = true;
     unsigned int seed = args[1]->NumberValue(context).FromMaybe(0);
 
-    EuchreConfig config{ stickTheDealer, maxRounds, seed };
+    EuchreConfig config{ stickTheDealer, maxRounds, fastRoundEvaluation, seed };
 
     JsEuchreCore<CoreType, className>* obj = new JsEuchreCore<CoreType, className>(config);
     obj->Wrap(args.This());
@@ -105,7 +107,7 @@ void JsEuchreCore<CoreType, className>::New(const v8::FunctionCallbackInfo<v8::V
     if (!args[3]->IsUndefined()) {
         auto logRule = args[3]->ToObject(context).ToLocalChecked();
         for (int i = 0; i < obj->core->config.N; i++) {
-            dynamic_cast<EuchrePlayerMarkov*>(&*obj->core->players[i])->shouldLog = logRule->Get(context, i).ToLocalChecked()->BooleanValue(isolate);
+            obj->core->players[i]->shouldLog = logRule->Get(context, i).ToLocalChecked()->BooleanValue(isolate);
         }
     }
 
@@ -358,8 +360,12 @@ void JsEuchreCore<CoreType, className>::whatCanIPlay(const v8::FunctionCallbackI
     args.GetReturnValue().Set(ret);
 }
 
+// Random
+
 std::string JsEuchreCoreRandomClassName = "EuchreCoreRandom";
 using JsEuchreCoreRandom = JsEuchreCore<EuchreCoreRandom, JsEuchreCoreRandomClassName>;
+
+// Markov
 
 std::string JsEuchreCoreMarkovClassName = "EuchreCoreMarkov";
 class JsEuchreCoreMarkov : public JsEuchreCore<EuchreCoreMarkov, JsEuchreCoreMarkovClassName> {
@@ -382,11 +388,11 @@ void JsEuchreCoreMarkov::Init(v8::Local<v8::Object> exports) {
     dummy.init(exports);
 }
 
-void copyWeights(NeuralNetwork& nn, v8::Local<v8::Object> weightsDict, v8::Isolate* isolate, v8::Local<v8::Context> context) {
+void copyWeights(NeuralNetwork& nn, v8::Local<v8::Object> weightsDict, v8::Isolate* isolate, v8::Local<v8::Context> context, std::string finalActivation) {
     auto weightsList = weightsDict->Get(context, v8String(isolate, nn.name)).ToLocalChecked()->ToObject(context).ToLocalChecked();
     int numLayers = weightsList->Get(context, v8String(isolate, "length")).ToLocalChecked()->NumberValue(context).FromMaybe(0);
     for (int i = 0; i < numLayers; i++) {
-        std::string act = i == numLayers - 1 ? "softmax" : "relu";
+        std::string act = i == numLayers - 1 ? finalActivation : "relu";
         nn.layers.emplace_back(act);
         Layer& layer = nn.layers.back();
 
@@ -421,15 +427,53 @@ void JsEuchreCoreMarkov::setWeights(const v8::FunctionCallbackInfo<v8::Value>& a
 
     auto weightsDict = args[0]->ToObject(context).ToLocalChecked();
 
-    copyWeights(obj->core->tnn, weightsDict, isolate, context);
-    copyWeights(obj->core->pnn, weightsDict, isolate, context);
-    copyWeights(obj->core->rnn, weightsDict, isolate, context);
-    copyWeights(obj->core->wnn, weightsDict, isolate, context);
+    copyWeights(obj->core->tnn, weightsDict, isolate, context, "softmax");
+    copyWeights(obj->core->pnn, weightsDict, isolate, context, "softmax");
+    copyWeights(obj->core->rnn, weightsDict, isolate, context, "softmax");
+    copyWeights(obj->core->wnn, weightsDict, isolate, context, "softmax");
+}
+
+// OIT
+
+std::string JsEuchreCoreOITClassName = "EuchreCoreOIT";
+class JsEuchreCoreOIT : public JsEuchreCore<EuchreCoreOIT, JsEuchreCoreOITClassName> {
+public:
+    static void Init(v8::Local<v8::Object> exports);
+
+private:
+    void createPrototype(v8::Local<v8::FunctionTemplate>& tpl) override;
+
+    static void setWeights(const v8::FunctionCallbackInfo<v8::Value>& args);
+};
+
+void JsEuchreCoreOIT::createPrototype(v8::Local<v8::FunctionTemplate>& tpl) {
+    JsEuchreCore<EuchreCoreOIT, JsEuchreCoreOITClassName>::createPrototype(tpl);
+    NODE_SET_PROTOTYPE_METHOD(tpl, "setWeights", setWeights);
+}
+
+void JsEuchreCoreOIT::Init(v8::Local<v8::Object> exports) {
+    JsEuchreCoreOIT dummy;
+    dummy.init(exports);
+}
+
+void JsEuchreCoreOIT::setWeights(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::Isolate* isolate = args.GetIsolate();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+
+    JsEuchreCore<EuchreCoreOIT, JsEuchreCoreOITClassName>* obj = ObjectWrap::Unwrap<JsEuchreCore<EuchreCoreOIT, JsEuchreCoreOITClassName>>(args.Holder());
+
+    auto weightsDict = args[0]->ToObject(context).ToLocalChecked();
+
+    copyWeights(obj->core->onn, weightsDict, isolate, context, "sigmoid");
+    copyWeights(obj->core->inn, weightsDict, isolate, context, "softmax");
+    copyWeights(obj->core->tnn, weightsDict, isolate, context, "softmax");
+    copyWeights(obj->core->wnn, weightsDict, isolate, context, "softmax");
 }
 
 void InitAll(v8::Local<v8::Object> exports) {
     JsEuchreCoreRandom::Init(exports);
     JsEuchreCoreMarkov::Init(exports);
+    JsEuchreCoreOIT::Init(exports);
 }
 
 NODE_MODULE(NODE_GYP_MODULE_NAME, InitAll)
