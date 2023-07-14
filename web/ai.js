@@ -1198,8 +1198,8 @@ class StrategyModuleEuchreCoreOIT extends StrategyModuleEuchreCore {
     setCoreCpp() {
         let maxRounds = 0
         let seed = Math.floor(Math.random() * 2147483648)
-        let log = true
-        let logRule = [true, true, true, true]
+        let log = false
+        let logRule = [false, false, false, false]
         let coreCpp = new _euchre.EuchreCoreOIT(maxRounds, seed, log, logRule)
 
         let weights = {}
@@ -1212,7 +1212,9 @@ class StrategyModuleEuchreCoreOIT extends StrategyModuleEuchreCore {
                     weights[name].push([layer.w.matrix, layer.b.vec])
                 }
             }
-            mtime = nn.mtime
+            if (name != 'wnn') {
+                mtime = nn.mtime
+            }
         }
         coreCpp.setWeights(weights)
 

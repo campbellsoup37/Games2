@@ -25,6 +25,9 @@ export class ClientStateEuchre extends ClientStateGameBase {
         super.initialize()
         this.trumpTimer = 1
         this.pickUpTimer = 0
+        this.showDespacito = false
+        this.despacitoCooldown = 60000
+        this.despacitoTime = 0
     }
 
     updateServerData_options(type, diff) {
@@ -34,10 +37,44 @@ export class ClientStateEuchre extends ClientStateGameBase {
         }
     }
 
+    chat(data) {
+        super.chat(data)
+        if (data.text == 'despacito') {
+            this.playDespacito()
+        }
+    }
+
+    playDespacito() {
+        let now = new Date().getTime()
+
+        if (now < this.baseState.despacitoTime) {
+            let waitTime = Math.max(Math.floor((this.baseState.despacitoTime - now) / 1000), 1)
+            this.canvas.chat({ sender: 'System', text: `Wait ${waitTime} seconds before spamming Despacito.` })
+            return
+        }
+        this.baseState.despacitoTime = now + this.baseState.despacitoCooldown
+
+        let duration = 10
+        let startTime = Math.floor(Math.random() * (250 - duration - 1))
+        let endTime = startTime + duration + 1
+
+        let ytTe = new TimerEntry(duration * 1000)
+        ytTe.onFirstAction = () => {
+            this.canvas.despacito.start(startTime, endTime)
+            this.baseState.showDespacito = true
+        }
+        ytTe.onLastAction = () => {
+            this.canvas.despacito.stop()
+            this.baseState.showDespacito = false
+        }
+        this.canvas.pushTimerEntry(ytTe, true)
+    }
+
     paintUpCard() { return false }
     upCardIsDown() { return true }
     upCardIsDrawn() { return false }
     paintTrumpInteractables() { return false }
+    paintDespacito() { return this.baseState.showDespacito }
 }
 
 export class ClientStateEuchrePreGame extends createClientStatePreGame(ClientStateEuchre) {
@@ -404,7 +441,7 @@ class EuchreCanvas extends CanvasBase {
                 drawEuchreScore(this.ctx, x, y2, scores[1], 1, img)
             }
         }
-        this.scoreSheet = new EuchreScoreSheet();
+        this.scoreSheet = new EuchreScoreSheet()
         this.scoreSheet.x = () => this.client.cachedWidth - (this.client.state.baseState.scoreWidth - this.scoreSheet.scoreMargin)
         this.scoreSheet.y = () => this.scoreSheet.scoreMargin
         this.scoreSheet.width = () => this.client.state.baseState.scoreWidth - 2 * this.scoreSheet.scoreMargin
@@ -412,12 +449,50 @@ class EuchreCanvas extends CanvasBase {
         this.scoreSheet.container = () => this.client.state.scoreSheetContainer()
         this.scoreSheet.isShown = () => this.client.state.paintScoreSheet()
 
+        class EuchreDespacito extends WrappedDOMElement {
+            constructor() {
+                super(document.createElement('div'))
+            }
+
+            start(startTime, endTime) {
+                this.yt = document.createElement('iframe')
+                this.yt.src = "https://www.youtube.com/embed/7YJCp6J9H8E?start=" + startTime + "&end=" + endTime + "&autoplay=1&controls=0&disablekb=1&modestbranding=1"
+                this.yt.allow = "autoplay; encrypted-media;"
+                this.yt.setAttribute("allowfullscreen", "")
+                this.yt.style.cssText = "position:absolute; width:640px; height:480px;"
+                this.yt.style['pointer-events'] = "none"
+                this.element.appendChild(this.yt)
+
+                this.topMask = document.createElement('div')
+                this.topMask.style.cssText = "position:absolute; width:640px; height:60px;"
+                this.topMask.style.backgroundColor = 'black'
+                this.element.appendChild(this.topMask)
+
+                this.bottomMask = document.createElement('div')
+                this.bottomMask.style.cssText = "position:absolute; top:420px; width:640px; height:60px;"
+                this.bottomMask.style.backgroundColor = 'black'
+                this.element.appendChild(this.bottomMask)
+            }
+
+            stop() {
+                this.element.removeChild(this.yt)
+            }
+        }
+        this.despacito = new EuchreDespacito()
+        this.despacito.width = () => 640
+        this.despacito.height = () => 480
+        this.despacito.x = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth - this.despacito.width()) / 2
+        this.despacito.y = () => (this.client.cachedHeight - this.despacito.height() ) / 2
+        this.despacito.isShown = () => this.client.state.paintDespacito()
+        this.despacito.container = () => document.getElementById('inGameDiv')
+
         // filled out dynamically
         this.trumpButtons = [];
 
         this.interactables = this.interactables.concat([
             [this.scoreSheet],
-            this.trumpButtons
+            this.trumpButtons,
+            [this.despacito]
         ])
     }
 
