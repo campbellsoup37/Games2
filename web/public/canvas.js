@@ -350,13 +350,13 @@ export class MainMenuCanvas extends OhcCanvas {
                         let modeColor = 'black';
                         switch (games[i].mode) {
                             case 'Oh Hell':
-                                modeColor = 'green';
+                                modeColor = 'rgb(67, 119, 86)';
                                 break;
                             case 'Hearts':
-                                modeColor = 'rgb(255, 100, 100)';
+                                modeColor = 'rgb(127, 82, 82)';
                                 break;
                             case 'Euchre':
-                                modeColor = 'rgb(255, 255, 100)';
+                                modeColor = 'rgb(126, 112, 35)';
                                 break;
                         }
 

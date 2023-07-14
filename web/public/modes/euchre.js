@@ -248,7 +248,7 @@ function formatTrumpChoice(choice) {
     let width = 130
     let height = 50
     if (choice.pass) {
-        text = 'pass'
+        text = 'Pass'
     } else {
         width = 50
         color = ['black', 'red', 'black', 'red'][choice.suit]
@@ -271,15 +271,15 @@ function drawTrumpChoice(ctx, choice, x, y, t, just) {
     t = t === undefined ? 1 : t
     just = just === undefined ? 0 : just
     let format = formatTrumpChoice(choice)
-    let height = format.height * (1 - t / 2)
-    let width = Math.max(format.width * (1 - t * 0.666), height)
+    let height = format.height * (1 - t * 0.4)
+    let width = Math.max(format.width * (1 - t * 0.4), height)
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
     drawBox(ctx, x - (just + 1) * width / 2, y - height / 2, width, height, height / 2, undefined)
     if (t == 0) {
         drawText(ctx, format.text, x - just * width / 2, y + 1, 1, 1, font.large, format.color)
     } else {
-        drawText(ctx, format.text, x - just * width / 2, y, 1, 1, font.bold, format.color)
+        drawText(ctx, format.text, x - just * width / 2, y, 1, 1, font.medium, format.color)
     }
 }
 
@@ -422,9 +422,9 @@ class EuchreCanvas extends CanvasBase {
     }
 
     customPaintFirst() {
-        super.customPaintFirst()
         this.paintUpCard()
         this.paintTrumpChoice()
+        super.customPaintFirst()
         this.updateTrumpInteractables()
     }
 
@@ -494,7 +494,7 @@ class EuchreCanvas extends CanvasBase {
                 let bidX = startX * (1 - t) + endX * t;
                 let bidY = startY * (1 - t) + endY * t;
 
-                drawTrumpChoice(this.client.ctx, player.trumpChoice, bidX, bidY, t)
+                drawTrumpChoice(this.client.ctx, player.trumpChoice, bidX, bidY, t, (player.getJust() - 1) * t)
             }
         }
     }
@@ -519,7 +519,7 @@ class EuchreCanvas extends CanvasBase {
             button.innerHTML = `<p style="color:${format.color};">${format.text}</p>`
             button.classList.add(
                 'bg-white', 'rounded-lg', 'border', 'border-black', 'w-5', 'h-5',
-                'font-bold', 'text-base', 'select-none', 'hover:bg-gray-300'
+                'font-bold', 'text-2xl', 'select-none', 'hover:bg-gray-300'
             );
             button.addEventListener('click', () => {
                 this.client.state.makeTrumpChoice(choice)
@@ -527,7 +527,7 @@ class EuchreCanvas extends CanvasBase {
             })
 
             let height = format.height * 0.666
-            let width = Math.max(format.width * 0.45, height)
+            let width = Math.max(format.width * 0.6, height)
             totalWidth += width + 10
 
             let wrappedButton = new WrappedDOMElement(button)

@@ -1069,10 +1069,10 @@ export class CanvasBase extends OhcCanvas {
                 player.getTakenY = () => player.getY() + 50
                 player.getPassX = () => player.getX() + 250
                 player.getPassY = () => player.getY()
-                player.getTrumpX = () => player.getX() + this.client.vars.maxWid - 20
-                player.getTrumpY = () => player.getY() + 30
+                player.getTrumpX = () => player.getX() + this.client.vars.maxWid + 5
+                player.getTrumpY = () => player.getY()
                 player.getUpCardX = () => player.getX() + this.client.vars.maxWid + 10 + this.client.vars.deckImgSmall.width / 2
-                player.getUpCardY = () => player.getY()
+                player.getUpCardY = () => player.getY() - 5 - this.client.vars.deckImgSmall.height / 2
                 player.pov = () => false;
             } else if (index < cut2) {
                 // Top
@@ -1097,10 +1097,10 @@ export class CanvasBase extends OhcCanvas {
                 player.getTakenY = () => player.getY() + 50
                 player.getPassX = () => player.getX() - 250
                 player.getPassY = () => player.getY()
-                player.getTrumpX = () => player.getX() - this.client.vars.maxWid + 20
-                player.getTrumpY = () => player.getY() + 30
+                player.getTrumpX = () => player.getX() - this.client.vars.maxWid - 5
+                player.getTrumpY = () => player.getY()
                 player.getUpCardX = () => player.getX() - this.client.vars.maxWid - 10 - this.client.vars.deckImgSmall.width / 2
-                player.getUpCardY = () => player.getY()
+                player.getUpCardY = () => player.getY() - 5 - this.client.vars.deckImgSmall.height / 2
                 player.pov = () => false
             } else {
                 // Bottom (player)
@@ -1122,9 +1122,9 @@ export class CanvasBase extends OhcCanvas {
                 player.getPassX = () => player.getX()
                 player.getPassY = () => player.getY() - 300
                 player.getTrumpX = () => player.getX() + 200
-                player.getTrumpY = () => player.getY() + 3
+                player.getTrumpY = () => player.getY()
                 player.getUpCardX = () => player.getX() + 200
-                player.getUpCardY = () => player.getY() - 50
+                player.getUpCardY = () => player.getY() - 60
                 player.pov = () => true
             }
 

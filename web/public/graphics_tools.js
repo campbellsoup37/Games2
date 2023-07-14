@@ -2,6 +2,7 @@ export var font = {
     basic: "13px Arial",
     bold: "bold 13px Arial",
     small: "bold 9px Arial",
+    medium: "bold 24px Arial",
     large: "bold 40px Arial",
     title: "bold 52px Arial"
 }
