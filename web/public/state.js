@@ -72,6 +72,10 @@ export class ClientState {
         this.client.changeState('LOGIN_MENU')
     }
 
+    pingback() {
+        this.client.pingback()
+    }
+
     join(data) {
         this.client.vars.autojoinId = data.id
 

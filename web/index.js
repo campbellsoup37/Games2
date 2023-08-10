@@ -76,6 +76,16 @@ io.on("connection", function (socket) {
         removeUser(user);
     });
 
+    socket.on('ping', () => {
+        let user = userDict[socket.id];
+
+        if (user === undefined) {
+            return;
+        }
+
+        user.send('pingback')
+    })
+
     socket.on('gamelist', () => {
         let user = userDict[socket.id];
 

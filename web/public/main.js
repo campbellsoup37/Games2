@@ -55,6 +55,9 @@ class Client {
         this.socket.on('client', (data) => {
             this.state.receive(data)
         })
+        this.lastPing = 0
+        this.pingedBack = true
+        this.rtt = 0
 
         // route
         if (this.vars.username && this.vars.autojoinId) {
@@ -95,16 +98,19 @@ class Client {
 
         this.vars.preferences = {
             showFps: true,
+            showPing: true,
             teamColorTrick: true
         }
         for (let k of Object.keys(this.vars.preferences)) {
-            let cookie = getCookie('showFps')
+            let cookie = getCookie(k)
             if (cookie !== undefined) {
                 this.vars.preferences[k] = cookie == 'true'
             }
         }
 
         this.vars.pokeSound = new Audio('./resources/shortpoke.wav')
+
+        this.vars.pingTime = 5000
 
         this.vars.animationTime = 150
         this.vars.bidStayTime = 1500
@@ -134,8 +140,28 @@ class Client {
     }
 
     paint() {
+        this.ping()
         this.updateElementSizes()
         this.state.canvas.paint()
+    }
+
+    ping() {
+        let now = new Date().getTime()
+        if (now - this.lastPing < this.vars.pingTime || !this.pingedBack) {
+            return
+        }
+        console.log('ping', now, now - this.lastPing)
+        this.emit('ping')
+        this.lastPing = now
+        this.pingedBack = false
+        this.rtt = 0
+    }
+
+    pingback() {
+        let now = new Date().getTime()
+        console.log('pingback', now)
+        this.pingedBack = true
+        this.rtt = now - this.lastPing
     }
 
     updateElementSizes() {

@@ -833,17 +833,18 @@ export class CanvasBase extends OhcCanvas {
         this.updateHostOptions()
         this.updateHandInteractables()
         this.updateDecision()
-        this.adjustDivSizes();
-        this.paintPlayers();
-        this.paintTaken();
+        this.adjustDivSizes()
+        this.paintPlayers()
+        this.paintTaken()
     }
 
     customPaintLast() {
-        this.paintTrick();
-        this.paintPreselected();
-        this.paintMessage();
+        this.paintTrick()
+        this.paintPreselected()
+        this.paintMessage()
 
-        this.paintFrameRate();
+        this.paintFrameRate()
+        this.paintPing()
     }
 
     updateHostOptions() { }
@@ -862,8 +863,8 @@ export class CanvasBase extends OhcCanvas {
 
     fixPostGameWidth() {
         let leftWidth = this.client.cachedWidth - this.client.state.baseState.scoreWidth;
-        igPgLeft.style.width = leftWidth + 'px';
-        igPgRight.style.width = this.client.state.baseState.scoreWidth + 'px';
+        igPgLeft.style.width = leftWidth + 'px'
+        igPgRight.style.width = this.client.state.baseState.scoreWidth + 'px'
     }
 
     paintPlayers() {
@@ -1028,6 +1029,14 @@ export class CanvasBase extends OhcCanvas {
             this.frameTimes.push(time);
         }
         this.framePointer = (this.framePointer + 1) % 100;
+    }
+
+    paintPing() {
+        if (!this.client.vars.preferences.showPing) {
+            return;
+        }
+
+        drawText(this.client.ctx, 'Ping: ' + this.client.rtt, this.client.cachedWidth - this.client.state.baseState.scoreWidth - 20, 40, 2, 1, font.basic, 'red');
     }
 
     newGameReset() {

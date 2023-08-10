@@ -636,8 +636,8 @@ class PlayersList {
         this.players = this.players.filter(p => !players.includes(p));
         removeDiff.players = players.map(p => p.index)
         if (kibitzers) {
-            this.kibitzers = this.kibitzers.filter(p => !kibitzers.includes(p));
-            removeDiff.kibitzers = kibitzers.map(p => p.index)
+            removeDiff.kibitzers = kibitzers.map(p => this.kibitzers.map(q => q.id).indexOf(p.id))
+            this.kibitzers = this.kibitzers.filter(p => !kibitzers.includes(p))
         }
         this.core.addRemoveDiff(removeDiff)
 

@@ -259,8 +259,8 @@ class EuchreCore extends core.Core {
     incomingTrumpChoice(index, choice) {
         let player = this.players.get(index);
 
+        let action = choice.pass ? 'pass' : 'choose trump'
         if (this.state != CoreState.TRUMP) {
-            let action = choice.pass ? 'pass' : 'choose trump'
             log(`ERROR: Player "${player.id}" attempted to ${action}, but the game is not in trump state.`);
             return;
         } else if (index != this.turn) {
