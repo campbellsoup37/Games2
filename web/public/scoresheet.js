@@ -237,7 +237,7 @@ export class ScoreSheet extends WrappedDOMElement {
         if (this.sortBy == 1) {
             let sign = this.canvas.client.state.baseState.sortScoresDescending ? 1 : -1
             if (this.options.teams) {
-                this.teams.sort((t1, t2) => sign * Math.sign(t2.members[0].score - t1.members[0].score));
+                this.teams.sort((t1, t2) => sign * Math.sign(this.players[t2.members[0]].score - this.players[t1.members[0]].score));
             } else {
                 this.players.sort((p1, p2) => sign * Math.sign(p2.score - p1.score));
             }
