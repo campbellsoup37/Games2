@@ -243,6 +243,10 @@ class OhHellCore extends core.Core {
         }
         this.addUpdateDiff(this.toDict(player.kibitzer ? -1 : player.index), choices)
         this.flushDiffs([player])
+
+        if (this.state == CoreState.POSTGAME) {
+            this.sendPostGame([player])
+        }
     }
 
     transitionFromStart() {
@@ -478,39 +482,41 @@ class OhHellCore extends core.Core {
         }
     }
 
-    sendPostGame() {
+    sendPostGame(players) {
         this.state = CoreState.POSTGAME;
 
-        // win %
-        let winningScore = Math.max(...this.players.players.map(p => p.score))
-        let wb = new ml.BagModel(`./models/N${this.players.size()}/D${this.options.D}/T0/wb.txt`);
-        for (let j = 0; j < this.rounds.length; j++) {
-            if (j >= this.players.players[0].scores.length) {
-                break;
+        if (!this.json) {
+            // win %
+            let winningScore = Math.max(...this.players.players.map(p => p.score))
+            let wb = new ml.BagModel(`./models/N${this.players.size()}/D${this.options.D}/T0/wb.txt`);
+            for (let j = 0; j < this.rounds.length; j++) {
+                if (j >= this.players.players[0].scores.length) {
+                    break;
+                }
+
+                let v = new ml.BasicVector(this.players.players.map(p => p.scores[j]).concat([this.rounds.length - 1 - j]));
+                let wbProbs = j == this.rounds.length - 1 ?
+                    this.players.players.map(p => p.score == winningScore ? 1 : 0) :
+                    wb.evaluate(v).toArray();
+                this.players.addWbProbs(wbProbs);
             }
 
-            let v = new ml.BasicVector(this.players.players.map(p => p.scores[j]).concat([this.rounds.length - 1 - j]));
-            let wbProbs = j == this.rounds.length - 1 ?
-                this.players.players.map(p => p.score == winningScore ? 1 : 0) :
-                wb.evaluate(v).toArray();
-            this.players.addWbProbs(wbProbs);
+            this.json = {
+                mode: this.game.mode,
+                id: this.game.id,
+                options: this.options.toDict(),
+                rounds: this.rounds,
+                trumps: this.trumps.map(c => c.toDict()),
+                leaders: this.leaders,
+                winners: this.winners,
+                claims: this.claims,
+                ...this.players.postGameData()
+            };
+            this.game.publishJson(this.json);
         }
 
-        let json = {
-            mode: this.game.mode,
-            id: this.game.id,
-            options: this.options.toDict(),
-            rounds: this.rounds,
-            trumps: this.trumps.map(c => c.toDict()),
-            leaders: this.leaders,
-            winners: this.winners,
-            claims: this.claims,
-            ...this.players.postGameData()
-        };
-        this.game.publishJson(json);
-        //this.players.sendPostGameData(json);
-        this.addUpdateDiff({ state: this.state }, { postGameData: json })
-        this.flushDiffs()
+        this.addUpdateDiff({ state: this.state }, { postGameData: this.json })
+        this.flushDiffs(players)
     }
 
     hasColdClaim(index) {

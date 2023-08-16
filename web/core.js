@@ -1195,6 +1195,8 @@ class Core {
         this.claims = [];
         this.deck = new card.Deck(this.options.D);
 
+        this.json = undefined
+
         //if (debug) {
         //    var sample = require('./sample');
         //    this.fullDeals = sample.sample.map(ds => ds.map(h => h.map(c => new card.Card().fromString(c))));

@@ -92,8 +92,8 @@ export class ClientStateOhHell extends ClientStateGameBase {
             let teams = this.baseState.serverData.options.teams
             let pronoun = teams ? 'Your team' : 'You';
 
-            let bid = teams ? this.getTeamBid(myPlayer.team) : myPlayer.bid
-            let taken = teams ? this.getTeamTaken(myPlayer.team) : myPlayer.taken
+            let bid = teams ? this.getTeamBid(this.baseState.serverData.teams[myPlayer.team]) : myPlayer.bid
+            let taken = teams ? this.getTeamTaken(this.baseState.serverData.teams[myPlayer.team]) : myPlayer.taken
 
             let text = ''
             if (bid == taken) {
@@ -589,9 +589,10 @@ class OhHellCanvas extends CanvasBase {
                 let leftMessage = totalBid <= handSize ?
                     'Underbid by: ' + (handSize - totalBid) :
                     'Overbid by: ' + (totalBid - handSize);
-                let rightMessage = totalMaxBidTaken <= handSize ?
-                    'Unwanted tricks: ' + (handSize - totalMaxBidTaken) :
-                    'Excess tricks wanted: ' + (totalMaxBidTaken - handSize);
+                //let rightMessage = totalMaxBidTaken <= handSize ?
+                //    'Unwanted tricks: ' + (handSize - totalMaxBidTaken) :
+                //    'Excess tricks wanted: ' + (totalMaxBidTaken - handSize);
+                let rightMessage = 'Bags: ' + (handSize - totalMaxBidTaken)
 
                 let leftColor = totalBid <= handSize ? 'rgb(0, 0, 120)' : 'rgb(120, 0, 0)';
                 let rightColor = totalMaxBidTaken <= handSize ? 'rgb(0, 0, 120)' : 'rgb(120, 0, 0)';

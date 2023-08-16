@@ -51,13 +51,14 @@ class Client {
         this.changeState('LOADING')
 
         // socket
-        this.socket = io.connect(this.vars.baseUrl);
+        this.socket = io.connect(this.vars.baseUrl)
         this.socket.on('client', (data) => {
             this.state.receive(data)
         })
         this.lastPing = 0
         this.pingedBack = true
         this.rtt = 0
+        this.disconnected = false
 
         // route
         if (this.vars.username && this.vars.autojoinId) {
@@ -111,6 +112,7 @@ class Client {
         this.vars.pokeSound = new Audio('./resources/shortpoke.wav')
 
         this.vars.pingTime = 5000
+        this.vars.disconnectTime = 10000
 
         this.vars.animationTime = 150
         this.vars.bidStayTime = 1500
@@ -147,19 +149,22 @@ class Client {
 
     ping() {
         let now = new Date().getTime()
-        if (now - this.lastPing < this.vars.pingTime || !this.pingedBack) {
+        let elapsed = now - this.lastPing
+        if (elapsed >= this.vars.disconnectTime && !this.pingedBack) {
+            this.disconnected = true
+        }
+        if (elapsed < this.vars.pingTime || !this.pingedBack) {
             return
         }
-        console.log('ping', now, now - this.lastPing)
         this.emit('ping')
         this.lastPing = now
         this.pingedBack = false
         this.rtt = 0
+        this.disconnected = false
     }
 
     pingback() {
         let now = new Date().getTime()
-        console.log('pingback', now)
         this.pingedBack = true
         this.rtt = now - this.lastPing
     }

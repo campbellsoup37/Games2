@@ -57,6 +57,12 @@ export class ClientStateGameBase extends ClientState {
     }
 
     shiftPreselected(index) {
+        if (this.baseState.preselected.length == 0) {
+            return
+        }
+
+        this.baseState.preselected[0].preselection = -1
+
         this.baseState.preselected.shift()
         for (const inter of this.baseState.preselected) {
             inter.preselection--
@@ -1184,8 +1190,17 @@ export class CanvasBase extends OhcCanvas {
             return
         }
 
-        if (this.cardInteractables.length != this.client.state.baseState.myPlayer.hand.length) {
+        let handC = this.cardInteractables.map(c => c.getCard())
+        let handS = this.client.state.baseState.myPlayer.hand
+        if (handC.length != handS.length) {
             this.makeHandInteractables()
+        } else {
+            for (let i = 0; i < handC.length; i++) {
+                if (handC[i].num != handS[i].num || handC[i].suit != handS[i].suit) {
+                    this.makeHandInteractables()
+                    break
+                }
+            }
         }
 
         if (this.client.state.checkIfShouldPlayPreselected()) {
@@ -1281,6 +1296,8 @@ export class CanvasBase extends OhcCanvas {
     }
 
     loadPostGame(data) {
+        this.postGamePage.clearData()
+
         data.trumps = data.trumps.map(c => new Card(c.num, c.suit))
         for (const player of data.players) {
             player.bidQs = player.bidQs.map(r => r.map(pr => 100 * pr))
