@@ -740,7 +740,7 @@ export class CanvasBase extends OhcCanvas {
         chatA.style.resize = 'none';
         chatA.style.overflowY = 'auto';
         chatA.classList.add(
-            'bg-white', 'rounded-lg', 'border', 'border-black', 'text-sm', 'p-2'
+            'bg-white', 'rounded-lg', 'border', 'border-black', 'text-sm', 'p-2', 'break-words'
         );
         this.chatArea = new WrappedDOMElement(chatA);
         this.chatArea.x = () => this.client.cachedWidth - this.chatArea.width() - 10;
