@@ -258,6 +258,23 @@ io.on("connection", function (socket) {
         game.core.incomingBid(user.player.index, data.bid);
         user.player.readiedBid = undefined;
     });
+    socket.on('undobid', function (data) {
+        let user = userDict[socket.id]
+
+        if (user === undefined) {
+            log(`ERROR: socket ${socket.id} tried to undo bid, but they are not in the user dict.`)
+            return
+        }
+
+        let game = user.game
+
+        if (!user.game) {
+            log(`ERROR: user ${user.id} tried to undo bid, but they are not in a game.`)
+            return
+        }
+
+        game.core.undoBid(user.player.index)
+    })
     socket.on('play', function (data) {
         let user = userDict[socket.id];
 
@@ -362,7 +379,7 @@ io.on("connection", function (socket) {
             return;
         }
 
-        game.core.replaceWithRobot(user.player.index, index);
+        game.core.replaceWithRobot(user.player, index);
     });
     socket.on('poke', function (index) {
         let user = userDict[socket.id];

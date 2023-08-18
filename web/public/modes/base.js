@@ -694,8 +694,38 @@ export class CanvasBase extends OhcCanvas {
         );
         chatF.addEventListener('keydown', e => {
             if (e.keyCode == 13) {
-                this.client.state.sendChat(chatF.value);
-                chatF.value = '';
+                let text = chatF.value
+                chatF.value = ''
+
+                if (text.length == 0) {
+                    return
+                }
+
+                let name = this.client.state.baseState.myPlayer.name
+
+                if (text[0] == '/') {
+                    let args = text.split(' ')
+                    if (args[0] == '/bitcoin') {
+                        text = '<b style="color:green">BITCOIN MODE ENABLED $$</b>'
+                    } else if (args[0] == '/roll') {
+                        let min = 1
+                        let max = 100
+                        if (args.length == 2) {
+                            max = parseInt(args[1])
+                        } else if (args.length >= 3) {
+                            min = parseInt(args[1])
+                            max = parseInt(args[2])
+                        }
+                        let num = Math.floor(Math.random() * (max - min + 1) + min)
+                        text = `<b style='color:#AA5500'>${name} rolls ${num} (${min}-${max})</font>`
+                    } else {
+                        return
+                    }
+                } else {
+                    text = `${name}: ${text}`
+                }
+
+                this.client.state.sendChat(text)
             }
         });
         this.chatField = new WrappedDOMElement(chatF);
@@ -705,7 +735,7 @@ export class CanvasBase extends OhcCanvas {
         this.chatField.height = () => 32;
         this.chatField.container = () => this.client.state.div
 
-        let chatA = document.createElement('textarea');
+        let chatA = document.createElement('div');
         chatA.readOnly = true;
         chatA.style.resize = 'none';
         chatA.style.overflowY = 'auto';
@@ -1315,7 +1345,18 @@ export class CanvasBase extends OhcCanvas {
     }
 
     chat(data) {
-        this.chatArea.element.innerHTML += data.sender + ': ' + data.text + '&#10;'
+        let urlRegex = /^(http(s):\/\/.)[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)$/g
+
+        let text = ''
+        for (let word of data.text.split(' ')) {
+            let newWord = word
+            if (word.match(urlRegex)) {
+                newWord = `<a href=${word} ><u><font color='#0000EE'>${word}</font></u></a>`
+            }
+            text += ' ' + newWord
+        }
+
+        this.chatArea.element.innerHTML += text + '<br>'
         this.chatArea.element.scrollTop = this.chatArea.element.scrollHeight
     }
 }

@@ -270,7 +270,7 @@ class EuchreCore extends core.Core {
 
         player.addTrumpChoice(choice)
 
-        this.addUpdateDiff({}, { move: { human: player.human } })
+        this.addUpdateDiff({}, { move: { human: player.human && !player.replacedByRobot } })
         this.flushDiffs()
         this.addUpdateDiff({
             players: {
@@ -362,7 +362,7 @@ class EuchreCore extends core.Core {
             return
         }
 
-        this.addUpdateDiff({}, { move: { human: player.human } })
+        this.addUpdateDiff({}, { move: { human: player.human && !player.replacedByRobot } })
         this.flushDiffs()
         let cardIndex = player.hand.findIndex(c => c.matches(discard))
         this.addRemoveDiff({ players: { [index]: { hand: [cardIndex] } } })
@@ -410,7 +410,7 @@ class EuchreCore extends core.Core {
             return;
         }
 
-        this.addUpdateDiff({}, { move: { human: player.human } })
+        this.addUpdateDiff({}, { move: { human: player.human && !player.replacedByRobot } })
         this.flushDiffs()
         let cardIndex = player.hand.findIndex(c => c.matches(card))
         this.addRemoveDiff({ players: { [index]: { hand: [cardIndex] } } })

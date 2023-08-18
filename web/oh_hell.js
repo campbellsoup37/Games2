@@ -87,6 +87,7 @@ class OhHellPlayer extends core.Player {
 
     newRoundReset() {
         this.bid = 0;
+        this.usedUndoBid = false
         this.taken = 0;
         this.bidded = false;
         this.trick = new card.Card();
@@ -113,6 +114,15 @@ class OhHellPlayer extends core.Player {
             offset = 0;
         }
         this.hypoPointsLost.push(ai.pointsMean(qs, aiBid + offset) - ai.pointsMean(qs, this.bid + offset));
+    }
+
+    removeBid() {
+        this.bidded = false
+        this.usedUndoBid = true
+        this.bids.pop()
+        this.bidQs.pop()
+        this.aiBids.pop()
+        this.hypoPointsLost.pop()
     }
 
     addPlay(card, isLead, follow) {
@@ -223,6 +233,23 @@ class OhHellCore extends core.Core {
         return new OhHellAiPlayer(number, this)
     }
 
+    // index = hide all hands except for index
+    toDict(index) {
+        return {
+            options: this.options,
+            rounds: this.rounds,
+            roundNumber: this.roundNumber,
+            leader: this.leader,
+            state: this.state,
+            turn: this.turn,
+            canUndo: this.canUndo,
+            trump: this.trump,
+            players: this.players.playersDict(index),
+            kibitzers: this.players.kibitzersDict(index),
+            teams: this.players.teams.map(t => t.toDict())
+        };
+    }
+
     isInGame() {
         return this.state == CoreState.BIDDING || this.state == CoreState.PLAYING
     }
@@ -301,14 +328,15 @@ class OhHellCore extends core.Core {
         this.seen.add(this.trump);
 
         this.state = CoreState.BIDDING;
+        this.canUndo = -1;
 
         //this.players.communicateTurn(this.state, this.turn, { ss: this.spreadsheet ? this.spreadsheet[0] : undefined });
         this.players.players[this.turn].bidAsync()
 
         this.flushDiffs()
-        this.addUpdateDiff({ state: this.state, turn: this.turn })
+        this.addUpdateDiff({ state: this.state, turn: this.turn, canUndo: this.canUndo })
         this.flushDiffs(this.players.players.filter(p => p.index != this.turn).concat(this.players.kibitzers))
-        this.addUpdateDiff({ state: this.state, turn: this.turn }, { cannotBid: this.whatCanINotBid(this.turn) })
+        this.addUpdateDiff({ state: this.state, turn: this.turn, canUndo: this.canUndo }, { cannotBid: this.whatCanINotBid(this.turn) })
         this.flushDiffs([this.players.players[this.turn]])
     }
 
@@ -329,7 +357,7 @@ class OhHellCore extends core.Core {
             return;
         }
 
-        this.addUpdateDiff({}, { move: { human: player.human } })
+        this.addUpdateDiff({}, { move: { human: player.human && !player.replacedByRobot } })
         this.flushDiffs()
 
         let offset = 0;
@@ -337,8 +365,15 @@ class OhHellCore extends core.Core {
             offset = this.players.teams[player.team].bid();
         }
 
+        if (player.usedUndoBid) {
+            this.canUndo = -1
+        } else {
+            this.canUndo = index
+        }
+
         this.players.bidReport(index, bid, offset);
         this.addUpdateDiff({
+            canUndo: this.canUndo,
             players: {
                 [player.index]: {
                     bid: bid,
@@ -381,6 +416,45 @@ class OhHellCore extends core.Core {
         this.flushDiffs()
     }
 
+    undoBid(index) {
+        let player = this.players.players[index]
+
+        if (index != this.canUndo) {
+            log('ERROR: Player "' + player.id + '" attempted to undo bid, but they can\'t do that now.')
+            return
+        }
+
+        this.canUndo = -1
+        this.turn = index
+        this.state = CoreState.BIDDING
+
+        player.removeBid()
+        this.addUpdateDiff({
+            canUndo: this.canUndo,
+            players: {
+                [player.index]: {
+                    bidded: false
+                }
+            }
+        })
+        this.addRemoveDiff({
+            players: {
+                [player.index]: {
+                    bids: [player.bids.length]
+                }
+            }
+        })
+        this.flushDiffs()
+
+        let choices = { cannotBid: this.whatCanINotBid(this.turn) }
+        this.players.players[this.turn].bidAsync()
+        this.flushDiffs()
+        this.addUpdateDiff({ state: this.state, turn: this.turn })
+        this.flushDiffs(this.players.players.filter(p => p.index != this.turn).concat(this.players.kibitzers))
+        this.addUpdateDiff({ state: this.state, turn: this.turn }, choices)
+        this.flushDiffs([this.players.players[this.turn]])
+    }
+
     incomingPlay(index, card) {
         let player = this.players.get(index);
 
@@ -402,7 +476,7 @@ class OhHellCore extends core.Core {
 
         this.trickOrder.push(card, index);
 
-        this.addUpdateDiff({}, { move: { human: player.human } })
+        this.addUpdateDiff({}, { move: { human: player.human && !player.replacedByRobot } })
         this.flushDiffs()
         let cardIndex = player.hand.findIndex(c => c.matches(card))
         this.addRemoveDiff({ players: { [index]: { hand: [cardIndex] } } })
@@ -410,8 +484,11 @@ class OhHellCore extends core.Core {
         this.addRemoveDiff({ players: { [index]: { hand: [0] } } })
         this.flushDiffs(this.players.players.filter(p => p.id != player.id))
 
+        this.canUndo = -1
+
         this.players.playReport(index, card, index == this.leader, this.getLead().suit);
         this.addUpdateDiff({
+            canUndo: this.canUndo,
             players: {
                 [player.index]: {
                     trick: card,

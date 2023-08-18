@@ -111,19 +111,6 @@ class Player {
         this.hands.push(hand.map(c => c));
     }
 
-    addBid(bid, offset) {
-        this.bid = bid;
-        this.bidded = true;
-        this.bids.push(bid);
-
-        let qs = this.bidQs[this.bidQs.length - 1];
-        let aiBid = this.aiBids[this.aiBids.length - 1];
-        if (!offset) {
-            offset = 0;
-        }
-        this.hypoPointsLost.push(ai.pointsMean(qs, aiBid + offset) - ai.pointsMean(qs, this.bid + offset));
-    }
-
     addPlay(card) {
         this.trick = card;
         this.played = true;
@@ -1126,22 +1113,6 @@ class Core {
         this.updateOptions(options)
     }
 
-    // index = hide all hands except for index
-    toDict(index) {
-        return {
-            options: this.options,
-            rounds: this.rounds,
-            roundNumber: this.roundNumber,
-            leader: this.leader,
-            state: this.state,
-            turn: this.turn,
-            trump: this.trump,
-            players: this.players.playersDict(index),
-            kibitzers: this.players.kibitzersDict(index),
-            teams: this.players.teams.map(t => t.toDict())
-        };
-    }
-
     addUpdateDiff(data, args) {
         this.diffs.push({ type: 'update', data: data, args: args })
     }
@@ -1316,8 +1287,8 @@ class Core {
         this.players.sendChat(index, text);
     }
 
-    replaceWithRobot(index, indexTarget) {
-        if (this.players.get(index) !== this.game.host || !this.players.get(indexTarget).disconnected) {
+    replaceWithRobot(player, indexTarget) {
+        if (!player.host || !this.players.get(indexTarget).disconnected) {
             return;
         }
 

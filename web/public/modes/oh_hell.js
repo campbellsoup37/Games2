@@ -61,12 +61,17 @@ export class ClientStateOhHell extends ClientStateGameBase {
         }
     }
 
+    undoBid() {
+        this.client.emit('undobid')
+    }
+
     paintTrump() { return false }
     paintShowSpreadsheet() { return false }
     paintSpreadsheet() { this.paintShowSpreadsheet() && this.baseState.showSpreadsheet }
     bidChipColor(player) { return 'rgba(255, 255, 255, 0.7)' }
     paintBidInteractables() { return false }
     hideCard(card) { return !this.baseState.showOneCard }
+    paintUndoBid() { return false }
 
     getTeamBid(team) { return team.members.reduce((a, i) => a + this.baseState.serverData.players[i].bid, 0) }
     getTeamTaken(team) { return team.members.reduce((a, i) => a + this.baseState.serverData.players[i].taken, 0) }
@@ -176,6 +181,7 @@ export class ClientStateOhHellBidding extends ClientStateOhHell {
     paintTrump() { return this.baseState.serverData.trump !== undefined }
     paintPlayers() { return true }
     paintTaken() { return true }
+    paintUndoBid() { return !this.baseState.myPlayer.kibitzer && this.baseState.myPlayer.index == this.baseState.serverData.canUndo }
     paintShowSpreadsheet() {
         let data = this.baseState.serverData
         return data.rounds[data.roundNumber] && data.rounds[data.roundNumber].handSize == 1
@@ -213,6 +219,7 @@ export class ClientStateOhHellPlaying extends createClientStatePlaying(ClientSta
         return data.roundNumber < data.rounds.length && !this.baseState.myPlayer.kibitzer && data.options.teams
     }
     paintTrump() { return this.baseState.serverData.trump !== undefined }
+    paintUndoBid() { return this.baseState.myPlayer.index == this.baseState.serverData.canUndo }
     paintShowSpreadsheet() {
         let data = this.baseState.serverData
         return data.rounds[data.roundNumber] && data.rounds[data.roundNumber].handSize == 1
@@ -740,6 +747,21 @@ class OhHellCanvas extends CanvasBase {
         }
         this.spreadsheet = new Spreadsheet();
 
+        let undoBidButton = document.createElement('button')
+        undoBidButton.innerHTML = 'Undo bid'
+        undoBidButton.classList.add(
+            'bg-white', 'rounded-lg', 'border', 'border-black', 'w-5', 'h-5',
+            'font-bold', 'text-sm', 'select-none', 'hover:bg-gray-300'
+        )
+        undoBidButton.addEventListener('click', () => this.client.state.undoBid())
+        this.undoBid = new WrappedDOMElement(undoBidButton)
+        this.undoBid.width = () => 100
+        this.undoBid.height = () => 30
+        this.undoBid.x = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 - this.undoBid.width() / 2
+        this.undoBid.y = () => this.client.cachedHeight - 210 - 15
+        this.undoBid.container = () => document.getElementById('inGameDiv')
+        this.undoBid.isShown = () => this.client.state.paintUndoBid() && this.bidButtons.length == 0
+
         // filled out dynamically
         this.bidButtons = [];
 
@@ -748,6 +770,7 @@ class OhHellCanvas extends CanvasBase {
             [this.showCard, this.showSpreadsheet, this.spreadsheet],
             [this.teamsPanel],
             [this.hotdog, this.teamInfo],
+            [this.undoBid],
             this.bidButtons
         ])
     }
@@ -801,13 +824,24 @@ class OhHellCanvas extends CanvasBase {
 
     makeBidInteractables() {
         this.bidButtons.length = 0;
-        let myPlayer = this.client.state.baseState.myPlayer
+        let baseState = this.client.state.baseState
+        let myPlayer = baseState.myPlayer
+        let serverData = baseState.serverData
+
+        let teamBid = 0
+        if (serverData.options.teams) {
+            teamBid = serverData.teams[myPlayer.team].members.map(i => serverData.players[i].bidded ? serverData.players[i].bid : 0).reduce((a, b) => a + b, 0)
+        }
+        let highestMakeableBid = myPlayer.hand.length - teamBid
+
         for (let i = 0; i <= myPlayer.hand.length; i++) {
             let button = document.createElement('button');
             button.innerHTML = i
+            let color = i > highestMakeableBid ? 'bg-red-300' : 'bg-white'
+            let hoverColor = i > highestMakeableBid ? 'hover:bg-red-500' : 'hover:bg-gray-300'
             button.classList.add(
-                'bg-white', 'rounded-lg', 'border', 'border-black', 'w-5', 'h-5',
-                'font-bold', 'text-sm', 'select-none', 'hover:bg-gray-300'
+                color, 'rounded-lg', 'border', 'border-black', 'w-5', 'h-5',
+                'font-bold', 'text-sm', 'select-none', hoverColor
             );
             button.addEventListener('click', () => {
                 this.client.state.makeBid(i)
@@ -815,7 +849,7 @@ class OhHellCanvas extends CanvasBase {
             })
 
             let wrappedButton = new WrappedDOMElement(button);
-            wrappedButton.x = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 + i * 40 - myPlayer.hand.length * 40 / 2 - 15
+            wrappedButton.x = () => (this.client.cachedWidth - baseState.scoreWidth) / 2 + i * 40 - myPlayer.hand.length * 40 / 2 - 15
             wrappedButton.y = () => this.client.cachedHeight - 210 - 15
             wrappedButton.width = () => 30
             wrappedButton.height = () => 30

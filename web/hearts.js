@@ -134,6 +134,20 @@ class HeartsCore extends core.Core {
         return new HeartsAiPlayer(number, this)
     }
 
+    // index = hide all hands except for index
+    toDict(index) {
+        return {
+            options: this.options,
+            rounds: this.rounds,
+            roundNumber: this.roundNumber,
+            leader: this.leader,
+            state: this.state,
+            turn: this.turn,
+            players: this.players.playersDict(index),
+            kibitzers: this.players.kibitzersDict(index)
+        };
+    }
+
     isInGame() {
         return this.state == CoreState.PASSING || this.state == CoreState.PLAYING
     }
@@ -242,7 +256,7 @@ class HeartsCore extends core.Core {
             return;
         }
 
-        this.addUpdateDiff({}, { move: { human: player.human } })
+        this.addUpdateDiff({}, { move: { human: player.human && !player.replacedByRobot } })
         this.flushDiffs()
 
         this.players.passReport(index, cards)
@@ -326,7 +340,7 @@ class HeartsCore extends core.Core {
             this.heartsBroken = true;
         }
 
-        this.addUpdateDiff({}, { move: { human: player.human } })
+        this.addUpdateDiff({}, { move: { human: player.human && !player.replacedByRobot } })
         this.flushDiffs()
         let cardIndex = player.hand.findIndex(c => c.matches(card))
         this.addRemoveDiff({ players: { [index]: { hand: [cardIndex] } } })
