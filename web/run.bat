@@ -1,1 +1,1 @@
-nodemon -e .js,.html
+nodemon -e .js,.html,.svg,.css

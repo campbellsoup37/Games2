@@ -41,6 +41,8 @@ export class CanvasInteractable {
 
     wheel() { }
 
+    click() { }
+
     cursor() {
         return 'default';
     }
@@ -518,5 +520,62 @@ export class CanvasCard extends CanvasInteractable {
                 -1, undefined
             );
         }
+    }
+}
+
+function createCardSvg(card) {
+    let svg = document.getElementById("cardback1")
+    let copy = svg.cloneNode(true)
+    copy.id = ''
+    return copy
+}
+
+export class CanvasCard2 extends WrappedDOMElement {
+    constructor(card, scale, deckImg, ctx) {
+        super(createCardSvg(card), false)
+        this.card = card
+        this.scale = scale
+        this.deckImg = deckImg
+        this.ctx = ctx
+    }
+
+    getCard() {
+        return this.card
+    }
+
+    x() {
+        return this.xCenter() - this.width() / 2;
+    }
+
+    y() {
+        return this.yCenter() - this.height() / 2;
+    }
+
+    xPaintOffset() {
+        return 0;
+    }
+
+    yPaintOffset() {
+        return 0;
+    }
+
+    width() {
+        return this.scale * 112
+    }
+
+    height() {
+        return this.scale * 148
+    }
+
+    isShown() {
+        return true;
+    }
+
+    hidden() {
+        return false;
+    }
+
+    dark() {
+        return this.isMoused();
     }
 }

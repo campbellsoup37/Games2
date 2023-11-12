@@ -1,5 +1,9 @@
 import { TimerEntry, PlainCanvas, LoginMenuCanvas, MainMenuCanvas, ModeSelectCanvas } from './canvas.js'
 
+import { isNightEyeActive, updateManualDarkMode } from './graphics_tools.js'
+
+import { setCookie } from './main.js'
+
 class Options {
     constructor() {
         this.robots = 0;
@@ -58,6 +62,30 @@ export class ClientState {
         let te = new TimerEntry(delay ? delay : 0);
         te.onLastAction = func;
         this.canvas.pushTimerEntry(te, front);
+    }
+
+    openPreferences() {
+        let preferences = document.getElementById('preferencesDiv')
+        //this.div.appendChild(preferences)
+        preferences.style.display = 'flex'
+
+        let darkMode = document.getElementById('prefDarkMode')
+        darkMode.addEventListener('click', () => {
+            setCookie('darkMode', darkMode.checked, 365)
+            updateManualDarkMode()
+        })
+        if (isNightEyeActive()) {
+            document.getElementById('prefDarkMode').checked = true
+            document.getElementById('prefDarkMode').disabled = true
+        }
+
+        let cardBack = document.getElementById('prefCardBack')
+        cardBack.addEventListener('click', () => { setCookie('cardBack', cardBack.value, 365) })
+
+        let showFps = document.getElementById('prefShowFps')
+        showFps.addEventListener('click', () => { setCookie('showFps', showFps.checked, 365) })
+
+        document.getElementById('prefClose').addEventListener('click', () => preferences.style.display = 'none')
     }
 
     // server entry points

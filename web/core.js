@@ -1210,6 +1210,7 @@ class Core {
             dIndex = this.players.nextUnkicked(dIndex);
         }
 
+        this.addRemoveDiff({ 'rounds': null })
         this.addUpdateDiff({ rounds: this.rounds, roundNumber: this.roundNumber })
     }
 

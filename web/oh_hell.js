@@ -455,8 +455,12 @@ class OhHellCore extends core.Core {
         this.flushDiffs([this.players.players[this.turn]])
     }
 
-    incomingPlay(index, card) {
+    incomingPlay(index, card, cardIndex) {
         let player = this.players.get(index);
+
+        if (cardIndex === undefined) {
+            cardIndex = player.hand.findIndex(c => c.matches(card))
+        }
 
         if (index != this.turn) {
             log('ERROR: Player "' + player.id + '" attempted to play out of turn.');
@@ -470,6 +474,9 @@ class OhHellCore extends core.Core {
         } else if (!this.whatCanIPlay(index).filter(c => c.matches(card)).length) {
             log('ERROR: Player "' + player.id + '" attempted to play ' + card.toString() + ', failing to follow suit.');
             return;
+        } else if (cardIndex >= player.hand.length || !player.hand[cardIndex].matches(card)) {
+            log('ERROR: Player "' + player.id + '" played card ' + card.toString() + ' with mismatching cardIndex ' + cardIndex + '.');
+            return;
         }
 
         this.seen.add(card);
@@ -478,7 +485,6 @@ class OhHellCore extends core.Core {
 
         this.addUpdateDiff({}, { move: { human: player.human && !player.replacedByRobot } })
         this.flushDiffs()
-        let cardIndex = player.hand.findIndex(c => c.matches(card))
         this.addRemoveDiff({ players: { [index]: { hand: [cardIndex] } } })
         this.flushDiffs([player].concat(this.players.kibitzers))
         this.addRemoveDiff({ players: { [index]: { hand: [0] } } })

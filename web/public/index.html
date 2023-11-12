@@ -5,10 +5,11 @@
         <title>Oh Hell</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link href="tailwind.css" rel="stylesheet">
+        <link href="tailwind_dark.css" rel="stylesheet" id="tailwindDark">
         <style>
             * {padding: 0; margin: 0;}
             canvas {background: #eee; display: block; margin: 0 auto;}
-            body {background-image: "resources/tableimage.png";}
+            body {background-image: "resources/tableimage_dark.png";}
             ::-webkit-scrollbar {width: 3px;}
             ::-webkit-scrollbar-thumb {background: #888;}
         </style>
@@ -22,7 +23,7 @@
                 <h1 class="text-6xl font-bold mt-3 select-none">Oh Hell</h1>
                 <div class="mt-24">
                     <p class="font-bold" style="float:left;">Username:</p>
-                    <input type="text" autocomplete="off" class="bg-white rounded-lg border border-black w-2/3 h-8 text-sm p-2" style="float:right;" id="lmUsername"></input>
+                    <input type="text" autocomplete="off" class="bg-white rounded-lg border border-black w-2/3 h-8 text-sm p-2" style="float:right;" id="lmUsername">
                 </div>
                 <button class="bg-white rounded-lg border border-black w-1/2 h-10 font-bold text-md select-none mt-16 hover:bg-gray-300" id="lmConnect">Login</button>
             </div>
@@ -42,6 +43,7 @@
                 </div>
                 <div class="space-x-5 w-full p-3 rounded-3xl flex items-center justify-center" style="height:80px;">
                     <button class="bg-white rounded-lg border border-black w-36 h-10 font-bold text-md select-none hover:bg-gray-300" id="mmSavedGame">Open game file</button>
+                    <button class="bg-white rounded-lg border border-black w-36 h-10 font-bold text-md select-none hover:bg-gray-300" id="mmPreferences">Preferences</button>
                     <button class="bg-white rounded-lg border border-black w-36 h-10 font-bold text-md select-none hover:bg-gray-300" id="mmLogout">Log out</button>
                 </div>
             </div>
@@ -57,37 +59,37 @@
         </div>
 
         <div class="fixed inset-0 flex items-center justify-center space-x-1" style="display:none;" id="preGameDiv">
-            <div class="bg-white bg-opacity-70 max-w-md w-full h-2/5 p-6 rounded-3xl border-black border text-center">
+            <div class="bg-white bg-opacity-70 max-w-md w-full h-100 p-6 rounded-3xl border-black border text-center">
                 <div class="w-full mt-2" style="display:table;">
                     <div class="w-full" style="display:table-row;">
                         <p class="font-bold w-5" style="display:table-cell;">Name:</p>
-                        <input type="text" autocomplete="off" class="bg-white rounded-lg border border-black w-3/5 h-8 text-sm p-2 mr-2" style="display:table-cell;" id="igName"></input>
+                        <input type="text" autocomplete="off" class="bg-white rounded-lg border border-black w-3/5 h-8 text-sm p-2 mr-2" style="display:table-cell;" id="igName">
                         <button class="bg-white rounded-lg border border-black w-1/3 h-8 font-bold text-sm select-none hover:bg-gray-300" style="display:table-cell;" id="igChangeName">Change name</button>
                     </div>
                 </div>
                 <div class="w-full mt-5" style="display:table;height:1;">
                     <div class="w-full" style="display:table-row;">
                         <p class="font-bold w-1/2 h-8 text-right" style="display:table-cell;">Join as kibitzer:</p>
-                        <input type="checkbox" class="bg-white rounded-3xl border border-black w-5 h-5" style="display:table-cell;" id="igKibitzer"></input>
+                        <input type="checkbox" class="bg-white rounded-3xl border border-black w-5 h-5" style="display:table-cell;" id="igKibitzer">
                     </div>
                     <div class="w-full h-10" style="display:table-row;"></div>
                     <div class="w-full" style="display:table-row;">
                         <p class="font-bold w-1/2 h-8 text-right" style="display:table-cell;">Robots:</p>
-                        <input type="number" min="0" max="10" value="0" class="bg-white rounded-3xl border border-black w-14 h-6 p-2" style="display:table-cell;" id="igRobots"></input>
+                        <input type="number" min="0" max="10" value="0" class="bg-white rounded-3xl border border-black w-14 h-6 p-2" style="display:table-cell;" id="igRobots">
                     </div>
 
                     <div class="w-full" style="display:none;" id="doubleDeckOptionsRow">
                         <p class="font-bold w-1/2 h-8 text-right" style="display:table-cell;">Double deck:</p>
-                        <input type="checkbox" class="bg-white rounded-3xl border border-black w-5 h-5" style="display:table-cell;" id="igDoubleDeck"></input>
+                        <input type="checkbox" class="bg-white rounded-3xl border border-black w-5 h-5" style="display:table-cell;" id="igDoubleDeck">
                     </div>
                     <div class="w-full" style="display:none;" id="teamsOptionsRow">
                         <p class="font-bold w-1/2 h-8 text-right" style="display:table-cell;">Teams:</p>
-                        <input type="checkbox" class="bg-white rounded-3xl border border-black w-5 h-5" style="display:table-cell;" id="igTeams"></input>
+                        <input type="checkbox" class="bg-white rounded-3xl border border-black w-5 h-5" style="display:table-cell;" id="igTeams">
                     </div>
 
                     <div class="w-full" style="display:none;" id="oregonOptionsRow">
                         <p class="font-bold w-1/2 h-8 text-right" style="display:table-cell;">Oregon:</p>
-                        <input type="checkbox" class="bg-white rounded-3xl border border-black w-5 h-5" style="display:table-cell;" id="igOregon"></input>
+                        <input type="checkbox" class="bg-white rounded-3xl border border-black w-5 h-5" style="display:table-cell;" id="igOregon">
                     </div>
                 </div>
                 <div class="w-full mt-12" style="display:table;">
@@ -187,10 +189,45 @@
 
         <canvas id="canvas"></canvas>
 
+        <div class="fixed inset-0 flex items-center justify-center" style="display:none;" id="preferencesDiv">
+            <div class="bg-white bg-opacity-80 max-w-sm w-full p-6 rounded-3xl border-black border text-center">
+                <div class="w-full mt-2" style="display:table;">
+                    <div class="w-full" style="display:table-row;">
+                        <p class="font-bold h-8 w-1/2 text-right" style="display:table-cell;">Dark mode:</p>
+                        <input type="checkbox" class="bg-white rounded-3xl border border-black w-5 h-5" id="prefDarkMode">
+                    </div>
+                    <div class="w-full" style="display:table-row;">
+                        <p class="font-bold w-1/2 h-8 text-right" style="display:table-cell;">Card back:</p>
+                        <input type="number" min="1" max="11" value="1" class="bg-white rounded-3xl border border-black w-14 h-6 p-2" style="display:table-cell;" id="prefCardBack">
+                    </div>
+                    <div class="w-full" style="display:table-row;">
+                        <p class="font-bold h-8 w-1/2 text-right" style="display:table-cell;">Show FPS and ping:</p>
+                        <input type="checkbox" class="bg-white rounded-3xl border border-black w-5 h-5" id="prefShowFps">
+                    </div>
+                </div>
+                <button class="bg-white rounded-lg border border-black w-1/2 h-10 font-bold text-md select-none hover:bg-gray-300" id="prefClose">Close</button>
+            </div>
+        </div>
+
+        <div class="fixed inset-0 flex" style="display:none;" id="disconnectedDiv">
+            <div class="bg-white bg-opacity-60 p-3 w-full h-full text-center">
+                <p class="font-bold">Lost connection with server...</p>
+            </div>
+        </div>
+
         <div style="display:none;">
-        	<img id="background" src="resources/tableimage.png">
-            <img id="deckimg" src="resources/deck2.png">
-            <img id="deckimgsmall" src="resources/deck2small.png">
+            <img id="background" src="resources/tableimage.png">
+            <img id="background_dark" src="resources/tableimage_dark.png">
+            <img id="deckimg_old_1" src="resources/deck2.png">
+            <img id="deckimgsmall_old_1" src="resources/deck2small.png">
+            <img id="deckimg" src="resources/Vector Cards (Version 3.2)/modified/deckimg.svg">
+            <img id="deckimgdark" src="resources/Vector Cards (Version 3.2)/modified/deckimgdark.svg">
+            <img id="deckimgback" src="resources/Vector Cards (Version 3.2)/modified/back.png">
+            <img id="deckimgbackdark" src="resources/Vector Cards (Version 3.2)/modified/backdark.png">
+            <img id="deckimgsmall" src="resources/Vector Cards (Version 3.2)/modified/deckimgsmall.svg">
+            <img id="deckimgsmalldark" src="resources/Vector Cards (Version 3.2)/modified/deckimgsmalldark.svg">
+            <img id="deckimgsmallback" src="resources/Vector Cards (Version 3.2)/modified/backsmall.png">
+            <img id="deckimgsmallbackdark" src="resources/Vector Cards (Version 3.2)/modified/backsmalldark.png">
         </div>
 
         <script src="main.js" type="module"></script>

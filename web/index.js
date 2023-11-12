@@ -290,7 +290,7 @@ io.on("connection", function (socket) {
             return;
         }
 
-        game.core.incomingPlay(user.player.index, new card.Card(data.card.num, data.card.suit));
+        game.core.incomingPlay(user.player.index, new card.Card(data.card.num, data.card.suit), data.index);
         user.player.readiedPlay = undefined;
     });
     socket.on('pass', function (data) {

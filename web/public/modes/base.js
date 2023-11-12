@@ -3,11 +3,11 @@ import { Card } from '../basics.js'
 import { ClientState } from '../state.js'
 
 import {
-    font, colors, smallCardScale, getStringDimensions, drawText, drawBox, drawOval, createDeckImg, drawCard, drawLine, enableButton, disableButton
+    font, colors, smallCardScale, getStringDimensions, drawText, drawBox, drawOval, createDeckImg, drawCard, drawLine, enableButton, disableButton, adjustedStyle
 } from '../graphics_tools.js'
 
 import {
-    CanvasInteractable, WrappedDOMElement, PanelInteractable, CanvasButton, PlayerNamePlate, CanvasCard
+    CanvasInteractable, WrappedDOMElement, PanelInteractable, CanvasButton, PlayerNamePlate, CanvasCard, CanvasCard2
 } from '../interactable.js'
 
 import { TimerEntry, OhcCanvas } from '../canvas.js'
@@ -171,6 +171,16 @@ export class ClientStateGameBase extends ClientState {
         let myIndex = this.baseState.myPlayer.index
         if (type == 'update' && diff.players[myIndex] && diff.players[myIndex].hand && diff.players[myIndex].hand.length > 0) {
             this.canvas.updateHandInteractables()
+        }
+    }
+
+    updateServerData_kibitzers(type, diff) {
+        if (type == 'update') {
+            for (let [k, v] of Object.entries(diff.kibitzers)) {
+                if ('id' in v) {
+                    this.chat({ text: `<p style="color:${adjustedStyle('#0000ff')}">${v['name']} joined as a kibitzer.</p>` })
+                }
+            }
         }
     }
 
@@ -435,7 +445,7 @@ export function createClientStatePlaying(base) {
             this.baseState.cardJustPlayed = canvasCard.index()
             let card = canvasCard.getCard()
             this.canPlay = undefined
-            this.client.emit('play', { card: { num: card.num, suit: card.suit } })
+            this.client.emit('play', { card: { num: card.num, suit: card.suit }, index: canvasCard.index() })
         }
 
         enter(data) {
@@ -566,8 +576,6 @@ export class CanvasBase extends OhcCanvas {
             return
         }
 
-        this.setBackground(document.getElementById('background'));
-
         let thisCanvas = this
 
         // listeners
@@ -670,6 +678,22 @@ export class CanvasBase extends OhcCanvas {
         this.endButton.isEnabled = () => this.client.state.baseState.myPlayer && this.client.state.baseState.myPlayer.host;
         this.endButton.isShown = () => this.client.state.paintCornerButtons()
 
+        let preferencesB = document.createElement('button');
+        preferencesB.innerHTML = 'Preferences';
+        preferencesB.classList.add(
+            'bg-white', 'rounded-lg', 'border', 'border-black', 'w-5', 'h-5',
+            'font-bold', 'text-md', 'select-none', 'hover:bg-gray-300'
+        );
+        preferencesB.addEventListener('click', () => this.client.state.openPreferences())
+        this.preferencesButton = new WrappedDOMElement(preferencesB);
+        this.preferencesButton.x = () => 10;
+        this.preferencesButton.y = () => this.client.cachedHeight - 3 * (this.leaveButton.height() + 10);
+        this.preferencesButton.width = () => 105;
+        this.preferencesButton.height = () => 32;
+        this.preferencesButton.container = () => document.getElementById('inGameDiv');
+        this.preferencesButton.isEnabled = () => true
+        this.preferencesButton.isShown = () => this.client.state.paintCornerButtons()
+
         let claimB = document.createElement('button');
         claimB.innerHTML = 'Claim';
         claimB.classList.add(
@@ -679,7 +703,7 @@ export class CanvasBase extends OhcCanvas {
         claimB.addEventListener('click', () => this.client.state.makeClaim())
         this.claimButton = new WrappedDOMElement(claimB);
         this.claimButton.x = () => 10;
-        this.claimButton.y = () => this.client.cachedHeight - 3 * (this.leaveButton.height() + 10);
+        this.claimButton.y = () => this.client.cachedHeight - 4 * (this.leaveButton.height() + 10);
         this.claimButton.width = () => 105;
         this.claimButton.height = () => 32;
         this.claimButton.container = () => document.getElementById('inGameDiv');
@@ -787,6 +811,7 @@ export class CanvasBase extends OhcCanvas {
         this.miscInteractables = [
             this.leaveButton,
             this.endButton,
+            this.preferencesButton,
             this.claimButton,
             this.chatField,
             this.chatArea,
@@ -1046,7 +1071,7 @@ export class CanvasBase extends OhcCanvas {
     }
 
     paintFrameRate() {
-        if (!this.client.vars.preferences.showFps) {
+        if (!document.getElementById('prefShowFps').checked) {
             return;
         }
 
@@ -1060,7 +1085,7 @@ export class CanvasBase extends OhcCanvas {
             this.frameTimes[this.framePointer] = time;
 
             let fps = (1000 * 100 / total).toFixed(2);
-            drawText(this.client.ctx, 'FPS: ' + fps, this.client.cachedWidth - this.client.state.baseState.scoreWidth - 20, 20, 2, 1, font.basic, 'red');
+            drawText(this.client.ctx, 'FPS: ' + fps, this.client.cachedWidth - this.client.state.baseState.scoreWidth - 20, 20, 2, 1, font.bold, '#fe0000');
         } else {
             this.frameTimes.push(time);
         }
@@ -1068,11 +1093,11 @@ export class CanvasBase extends OhcCanvas {
     }
 
     paintPing() {
-        if (!this.client.vars.preferences.showPing) {
+        if (!document.getElementById('prefShowFps').checked) {
             return;
         }
 
-        drawText(this.client.ctx, 'Ping: ' + this.client.rtt, this.client.cachedWidth - this.client.state.baseState.scoreWidth - 20, 40, 2, 1, font.basic, 'red');
+        drawText(this.client.ctx, 'Ping: ' + this.client.rtt + 'ms', this.client.cachedWidth - this.client.state.baseState.scoreWidth - 20, 40, 2, 1, font.bold, '#fe0000');
     }
 
     newGameReset() {
@@ -1235,8 +1260,9 @@ export class CanvasBase extends OhcCanvas {
 
         if (this.client.state.checkIfShouldPlayPreselected()) {
             if (this.client.state.baseState.preselected.length > 0) {
-                if (this.client.state.canPlayCard(this.client.state.baseState.preselected[0].getCard())) {
-                    this.client.state.playCard(this.client.state.baseState.preselected[0])
+                let card = this.client.state.baseState.preselected[0]
+                if (this.client.state.canPlayCard(card.getCard())) {
+                    this.client.state.playCard(card)
                     this.client.state.baseState.shiftPreselected()
                 } else {
                     this.client.state.baseState.clearPreselected(0)
@@ -1351,7 +1377,7 @@ export class CanvasBase extends OhcCanvas {
         for (let word of data.text.split(' ')) {
             let newWord = word
             if (word.match(urlRegex)) {
-                newWord = `<a href=${word} ><u><font color='#0000EE'>${word}</font></u></a>`
+                newWord = `<a href=${word} target='_blank'><u><font color='#0000EE'>${word}</font></u></a>`
             }
             text += ' ' + newWord
         }

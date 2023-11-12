@@ -184,7 +184,7 @@ def run_fit():
         group_count=group_count,
         fit=True,
         save=True,
-        group_size=10,
+        group_size=100,
         game_log=False,
         epochs_per_fit=1,
         group_fit_window=1,

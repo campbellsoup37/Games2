@@ -33,3 +33,9 @@ pybind11_add_module(
 	games/euchre/pyeuchre.cpp
 )
 target_include_directories(_euchre PUBLIC games)
+
+pybind11_add_module(
+	_oh_hell
+	games/oh_hell/pyohhell.cpp
+)
+target_include_directories(_oh_hell PUBLIC games)

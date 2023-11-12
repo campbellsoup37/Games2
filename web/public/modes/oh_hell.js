@@ -833,12 +833,21 @@ class OhHellCanvas extends CanvasBase {
             teamBid = serverData.teams[myPlayer.team].members.map(i => serverData.players[i].bidded ? serverData.players[i].bid : 0).reduce((a, b) => a + b, 0)
         }
         let highestMakeableBid = myPlayer.hand.length - teamBid
+        let totalBid = serverData.players.map(p => p.bidded ? p.bid : 0).reduce((a, b) => a + b, 0)
+        let dealer = serverData.players[serverData.rounds[serverData.roundNumber].dealer]
 
         for (let i = 0; i <= myPlayer.hand.length; i++) {
             let button = document.createElement('button');
             button.innerHTML = i
-            let color = i > highestMakeableBid ? 'bg-red-300' : 'bg-white'
-            let hoverColor = i > highestMakeableBid ? 'hover:bg-red-500' : 'hover:bg-gray-300'
+            let color = 'bg-white'
+            let hoverColor = 'hover:bg-gray-300'
+            if (i > highestMakeableBid) {
+                color = 'bg-red-300'
+                hoverColor = 'hover:bg-red-500'
+            } else if (serverData.options.teams && i == highestMakeableBid && totalBid == teamBid && dealer.team == myPlayer.team) {
+                color = 'bg-yellow-400'
+                hoverColor = 'hover:bg-yellow-600'
+            }
             button.classList.add(
                 color, 'rounded-lg', 'border', 'border-black', 'w-5', 'h-5',
                 'font-bold', 'text-sm', 'select-none', hoverColor

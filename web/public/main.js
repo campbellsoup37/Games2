@@ -1,7 +1,7 @@
 // Connection
 var client
 
-import { createDeckImg } from './graphics_tools.js'
+import { createDeckImg, updateManualDarkMode } from './graphics_tools.js'
 
 import { ClientStateLoading, ClientStateLoginMenu, ClientStateMainMenu, ClientStateModeSelect } from './state.js'
 
@@ -94,25 +94,49 @@ class Client {
         }
 
         this.vars.deckImg = createDeckImg('deckimg')
+        this.vars.deckImg.dark = createDeckImg('deckimgdark')
+        this.vars.deckImg.back = createDeckImg('deckimgback')
+        this.vars.deckImg.back.dark = createDeckImg('deckimgbackdark')
         this.vars.deckImgSmall = createDeckImg('deckimgsmall')
+        this.vars.deckImgSmall.dark = createDeckImg('deckimgsmalldark')
+        this.vars.deckImgSmall.back = createDeckImg('deckimgsmallback')
+        this.vars.deckImgSmall.back.dark = createDeckImg('deckimgsmallbackdark')
         this.vars.maxWid = 9 * 10 + this.vars.deckImgSmall.width
 
+        // preferences
         this.vars.preferences = {
-            showFps: true,
-            showPing: true,
-            teamColorTrick: true
+            darkMode: false,
+            showFps: false,
+            teamColorTrick: true,
+            cardBack: 1
+        }
+        function decode(val) {
+            if (!isNaN(val)) {
+                return Number(val)
+            }
+            if (val == 'true') {
+                return true
+            }
+            if (val == 'false') {
+                return false
+            }
+            return val
         }
         for (let k of Object.keys(this.vars.preferences)) {
             let cookie = getCookie(k)
             if (cookie !== undefined) {
-                this.vars.preferences[k] = cookie == 'true'
+                this.vars.preferences[k] = decode(cookie)
             }
         }
+        document.getElementById('prefDarkMode').checked = this.vars.preferences.darkMode
+        updateManualDarkMode()
+        document.getElementById('prefCardBack').value = this.vars.preferences.cardBack
+        document.getElementById('prefShowFps').checked = this.vars.preferences.showFps
 
         this.vars.pokeSound = new Audio('./resources/shortpoke.wav')
 
-        this.vars.pingTime = 5000
-        this.vars.disconnectTime = 10000
+        this.vars.pingTime = 50
+        this.vars.disconnectTime = 100
 
         this.vars.animationTime = 150
         this.vars.bidStayTime = 1500
@@ -148,10 +172,13 @@ class Client {
     }
 
     ping() {
+        let disc = document.getElementById('disconnectedDiv')
+
         let now = new Date().getTime()
         let elapsed = now - this.lastPing
         if (elapsed >= this.vars.disconnectTime && !this.pingedBack) {
             this.disconnected = true
+            disc.style.display = 'flex'
         }
         if (elapsed < this.vars.pingTime || !this.pingedBack) {
             return
@@ -161,6 +188,7 @@ class Client {
         this.pingedBack = false
         this.rtt = 0
         this.disconnected = false
+        disc.style.display = 'none'
     }
 
     pingback() {
@@ -250,7 +278,7 @@ function getCookie(cname) {
     return undefined;
 }
 
-function setCookie(cname, cvalue, exdays) {
+export function setCookie(cname, cvalue, exdays) {
     const d = new Date();
     d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
     let expires = "expires=" + d.toUTCString();

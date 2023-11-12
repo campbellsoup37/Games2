@@ -1,7 +1,7 @@
 import { Card } from '../basics.js'
 
 import {
-    font, colors, smallCardScale, getStringDimensions, drawText, drawBox, drawOval, createDeckImg, drawCard, drawLine, enableButton, disableButton, toggleButton
+    adjustedStyle, font, colors, smallCardScale, getStringDimensions, drawText, drawBox, drawOval, createDeckImg, drawCard, drawLine, enableButton, disableButton, toggleButton
 } from '../graphics_tools.js'
 
 import {
@@ -280,7 +280,7 @@ export class ClientStateEuchrePostGame extends createClientStatePostGame(ClientS
 // canvas
 
 function formatTrumpChoice(choice) {
-    let color = 'black'
+    let color = '#000000'
     let text = ''
     let width = 130
     let height = 50
@@ -288,7 +288,7 @@ function formatTrumpChoice(choice) {
         text = 'Pass'
     } else {
         width = 50
-        color = ['black', 'red', 'black', 'red'][choice.suit]
+        color = ['#000000', '#ff0000', '#000000', '#ff0000'][choice.suit]
         text = ['\u2663', '\u2666', '\u2660', '\u2665'][choice.suit]
         if (choice.alone) {
             width = 180
@@ -591,7 +591,7 @@ class EuchreCanvas extends CanvasBase {
             let format = formatTrumpChoice(choice)
 
             let button = document.createElement('button');
-            button.innerHTML = `<p style="color:${format.color};">${format.text}</p>`
+            button.innerHTML = `<p style="color:${adjustedStyle(format.color)};">${format.text}</p>`
             button.classList.add(
                 'bg-white', 'rounded-lg', 'border', 'border-black', 'w-5', 'h-5',
                 'font-bold', 'text-2xl', 'select-none', 'hover:bg-gray-300'

@@ -1,5 +1,5 @@
 import {
-    font, colors, drawText, drawBox, drawOval, createDeckImg, drawCard, drawLine, enableButton, disableButton
+    font, colors, drawText, drawBox, drawOval, createDeckImg, drawCard, drawLine, enableButton, disableButton, isDarkMode
 } from './graphics_tools.js'
 
 import {
@@ -83,8 +83,11 @@ export class OhcCanvas {
         }
     }
 
-    setBackground(image) {
-        this.background = image;
+    background() {
+        if (isDarkMode()) {
+            return document.getElementById('background_dark')
+        }
+        return document.getElementById('background')
     }
 
     backgroundCenterX() {
@@ -185,23 +188,24 @@ export class OhcCanvas {
             return;
         }
 
-        if (this.background !== undefined) {
+        let background = this.background()
+        if (background !== undefined) {
             let ratios = [
-                this.backgroundCenterX() * 2 / this.background.width,
-                (this.client.cachedWidth - this.backgroundCenterX()) * 2 / this.background.width,
-                this.backgroundCenterY() * 2 / this.background.height,
-                (this.client.cachedHeight - this.backgroundCenterY()) * 2 / this.background.height
+                this.backgroundCenterX() * 2 / background.width,
+                (this.client.cachedWidth - this.backgroundCenterX()) * 2 / background.width,
+                this.backgroundCenterY() * 2 / background.height,
+                (this.client.cachedHeight - this.backgroundCenterY()) * 2 / background.height
             ];
             let scale = 1;
             for (let i = 0; i < 4; i++) {
                 scale = Math.max(scale, ratios[i]);
             }
 
-            this.client.ctx.drawImage(this.background,
-                this.backgroundCenterX() - scale * this.background.width / 2,
-                this.backgroundCenterY() - scale * this.background.height / 2,
-                scale * this.background.width,
-                scale * this.background.height
+            this.client.ctx.drawImage(background,
+                this.backgroundCenterX() - scale * background.width / 2,
+                this.backgroundCenterY() - scale * background.height / 2,
+                scale * background.width,
+                scale * background.height
             );
         }
 
@@ -230,9 +234,7 @@ export class PlainCanvas extends OhcCanvas {
         super(client);
     }
 
-    initialize() {
-        this.setBackground(document.getElementById('background'));
-    }
+    initialize() {}
 }
 
 export class LoginMenuCanvas extends OhcCanvas {
@@ -241,8 +243,6 @@ export class LoginMenuCanvas extends OhcCanvas {
     }
 
     initialize() {
-        this.setBackground(document.getElementById('background'))
-
         let lmUsername = document.getElementById("lmUsername")
         lmUsername.addEventListener('keydown', e => {
             if (e.keyCode == 13) {
@@ -262,8 +262,6 @@ export class MainMenuCanvas extends OhcCanvas {
     }
 
     initialize() {
-        this.setBackground(document.getElementById('background'))
-
         let joinGameButton = document.getElementById('mmJoinMp')
         joinGameButton.addEventListener('click', () => this.client.state.joinGame(this.gameSelected()))
 
@@ -271,6 +269,7 @@ export class MainMenuCanvas extends OhcCanvas {
         document.getElementById('mmSinglePlayer').addEventListener('click', () => this.client.state.goToModeSelect(false))
 
         document.getElementById('mmSavedGame').addEventListener('click', () => this.client.state.openFile())
+        document.getElementById('mmPreferences').addEventListener('click', () => this.client.state.openPreferences())
         document.getElementById('mmLogout').addEventListener('click', () => this.client.state.logout())
 
         let canvas = this
@@ -341,7 +340,6 @@ export class MainMenuCanvas extends OhcCanvas {
                         let fnt = font.basic;
 
                         if (i == this.selected) {
-                            let fnt = font.bold;
                             this.ctx.fillStyle = 'rgb(230, 230, 230)';
                             drawBox(this.ctx, 2, entry.offset, entry.width() - 4, entry.height(), 10);
                         }
@@ -411,8 +409,6 @@ export class ModeSelectCanvas extends OhcCanvas {
     }
 
     initialize() {
-        this.setBackground(document.getElementById('background'));
-
         document.getElementById("msOhHell").addEventListener('click', () => {
             this.client.state.createGame('Oh Hell')
         })
