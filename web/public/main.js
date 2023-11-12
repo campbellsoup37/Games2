@@ -135,8 +135,8 @@ class Client {
 
         this.vars.pokeSound = new Audio('./resources/shortpoke.wav')
 
-        this.vars.pingTime = 50
-        this.vars.disconnectTime = 100
+        this.vars.pingTime = 5000
+        this.vars.disconnectTime = 10000
 
         this.vars.animationTime = 150
         this.vars.bidStayTime = 1500
