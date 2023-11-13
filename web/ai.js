@@ -126,9 +126,9 @@ class StrategyModuleDumb {
         } while (bid == cannotBid);
 
         let qs = new Array(this.player.hand.length).fill(0);
-        this.player.addQs(qs);
-        this.player.addDiff(0);
-        this.player.addAiBid(0);
+        this.player.addQs(this.core.roundNumber, qs);
+        this.player.addDiff(this.core.roundNumber, 0);
+        this.player.addAiBid(this.core.roundNumber, 0);
 
         return bid;
     }
@@ -149,7 +149,7 @@ class StrategyModuleDumb {
         let canPlay = this.core.whatCanIPlay(this.player.index);
 
         let fullProbs = this.player.hand.map(c => [c, -1]);
-        this.player.addMakingProbs(fullProbs);
+        this.player.addMakingProbs(this.core.getHandSize() - this.player.hand.length, fullProbs);
 
         return canPlay[Math.floor(Math.random() * canPlay.length)];
     }
@@ -186,11 +186,11 @@ class StrategyModuleOI {
         this.loadSlowFeatures();
 
         let qs = this.getQs(this.player.hand.length);
-        this.player.addQs(qs);
-        this.player.addDiff(difficulty(qs));
+        this.player.addQs(this.core.roundNumber, qs);
+        this.player.addDiff(this.core.roundNumber, difficulty(qs));
 
         let myBid = this.chooseBid(qs);
-        this.player.addAiBid(myBid);
+        this.player.addAiBid(this.core.roundNumber, myBid);
 
         log(`qs=[${qs}]`);
         log(`bid=${myBid}`);
@@ -215,7 +215,7 @@ class StrategyModuleOI {
                 fullProbs.push([c, -1]);
             }
         }
-        this.player.addMakingProbs(fullProbs);
+        this.player.addMakingProbs(this.core.getHandSize() - this.player.hand.length, fullProbs);
 
         if (this.player.hand.length == 1) {
             myPlay = this.player.hand[0];
@@ -512,11 +512,11 @@ class StrategyModuleOITeam {
             }
         }
 
-        this.player.addQs(qsTotal);
-        this.player.addDiff(difficulty(qsTotal));
+        this.player.addQs(this.core.roundNumber, qsTotal);
+        this.player.addDiff(this.core.roundNumber, difficulty(qsTotal));
 
         let myBid = this.chooseBid(qsTotal) - this.teamWantsBeforePlay;
-        this.player.addAiBid(myBid);
+        this.player.addAiBid(this.core.roundNumber, myBid);
 
         log(`Bidding ${myBid}`, this.logDepth);
         this.logDepth--;
@@ -543,7 +543,7 @@ class StrategyModuleOITeam {
                 fullProbs.push([c, -1]);
             }
         }
-        this.player.addMakingProbs(fullProbs);
+        this.player.addMakingProbs(this.core.getHandSize() - this.player.hand.length, fullProbs);
 
         if (this.player.hand.length == 1) {
             myPlay = this.player.hand[0];

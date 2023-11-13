@@ -632,6 +632,8 @@ class EuchreCanvas extends CanvasBase {
     }
 
     loadPostGame(data) {
+        this.postGamePage.clearData()
+
         data.trumps = data.trumps.map(c => new Card(c.num, c.suit))
         for (const player of data.players) {
             //player.bidQs = player.bidQs.map(r => r.map(pr => 100 * pr))

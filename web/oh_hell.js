@@ -190,20 +190,20 @@ class OhHellPlayer extends core.Player {
         this.decisionReady(choice);
     }
 
-    addQs(qs) {
-        this.bidQs.push(qs);
+    addQs(i, qs) {
+        this.bidQs[i] = qs
     }
 
-    addAiBid(bid) {
-        this.aiBids.push(bid);
+    addAiBid(i, bid) {
+        this.aiBids[i] = bid
     }
 
-    addMakingProbs(probs) {
-        this.makingProbs[this.makingProbs.length - 1].push(probs);
+    addMakingProbs(i, probs) {
+        this.makingProbs[this.makingProbs.length - 1][i] = probs
     }
 
-    addDiff(diff) {
-        this.diffs.push(diff);
+    addDiff(i, diff) {
+        this.diffs[i] = diff
     }
 
     addLuck(luck) {

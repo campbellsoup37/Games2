@@ -199,26 +199,6 @@ class Player {
         this.decisionReady(choice);
     }
 
-    addQs(qs) {
-        this.bidQs.push(qs);
-    }
-
-    addAiBid(bid) {
-        this.aiBids.push(bid);
-    }
-
-    addMakingProbs(probs) {
-        this.makingProbs[this.makingProbs.length - 1].push(probs);
-    }
-
-    addDiff(diff) {
-        this.diffs.push(diff);
-    }
-
-    addLuck(luck) {
-        this.lucks.push(luck);
-    }
-
     reconnect(player) { }
 
     poke() { }

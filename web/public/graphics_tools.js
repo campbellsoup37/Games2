@@ -324,14 +324,14 @@ export function drawCard(ctx, card, x, y, scale, deckImg, dark, maxY, thickBorde
 
     if (dark) {
         ctx.fillStyle = 'rgba(127, 127, 127, 0.3)'
-        drawBox(ctx, x0, y0, cw1 * scale, diff, roundness, undefined, true, diff < ch1 * scale);
+        drawBox(ctx, x0, y0, cw1 * scale, diff, roundness, undefined, true);
     }
 
     let borderColor = thickBorderColor ? thickBorderColor : '#000000'
     //if (!thickBorderColor && isDarkMode() & card.num != 0) {
     //    borderColor = '#010101' // keep the border black here
     //}
-    drawBox(ctx, x0, y0, cw1 * scale, diff, roundness, borderColor, false, true, diff < ch1 * scale, thickBorderColor !== undefined)
+    drawBox(ctx, x0, y0, cw1 * scale, diff, roundness, borderColor, false, true, diff < ch1 * scale - 1, thickBorderColor !== undefined)
 
     if (angle !== undefined) {
         ctx.rotate(-angle)
