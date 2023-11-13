@@ -108,7 +108,8 @@ class Client {
             darkMode: false,
             showFps: false,
             teamColorTrick: true,
-            cardBack: 1
+            cardBack: 1,
+            soundVolume: 50
         }
         function decode(val) {
             if (!isNaN(val)) {
@@ -131,9 +132,11 @@ class Client {
         document.getElementById('prefDarkMode').checked = this.vars.preferences.darkMode
         updateManualDarkMode()
         document.getElementById('prefCardBack').value = this.vars.preferences.cardBack
+        document.getElementById('prefSoundVolume').value = this.vars.preferences.soundVolume
         document.getElementById('prefShowFps').checked = this.vars.preferences.showFps
 
         this.vars.pokeSound = new Audio('./resources/shortpoke.wav')
+        this.vars.cardSound = new Audio('./resources/Card play.wav')
 
         this.vars.pingTime = 5000
         this.vars.disconnectTime = 10000
@@ -226,6 +229,12 @@ class Client {
 
     reloadWithId(id) {
         document.location.search = `gameid=${id}`
+    }
+
+    playSound(name) {
+        let sound = this.vars[name]
+        sound.volume = document.getElementById('prefSoundVolume').value / 100
+        sound.play()
     }
 }
 

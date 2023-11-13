@@ -194,6 +194,10 @@ export class ClientStateGameBase extends ClientState {
         }
     }
 
+    updateServerDataArgs_sound(type, diff) {
+        this.client.playSound(`${diff.name}Sound`)
+    }
+
     adjustDivSizes() { }
     paintHotdog() { return false }
     paintTeamInfo() { return false }
@@ -238,7 +242,7 @@ export class ClientStateGameBase extends ClientState {
     }
 
     poke() {
-        this.client.vars.pokeSound.play()
+        this.client.playSound('pokeSound')
     }
 
     chat(data) {

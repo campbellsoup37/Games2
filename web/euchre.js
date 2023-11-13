@@ -427,6 +427,7 @@ class EuchreCore extends core.Core {
                 }
             }
         })
+        this.addUpdateDiff({}, { sound: { name: 'card' } })
         this.flushDiffs()
 
         let response = this.coreCpp.playCard(card.toNumber())

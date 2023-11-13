@@ -844,7 +844,7 @@ class OhHellCanvas extends CanvasBase {
             if (i > highestMakeableBid) {
                 color = 'bg-red-300'
                 hoverColor = 'hover:bg-red-500'
-            } else if (serverData.options.teams && i == highestMakeableBid && totalBid == teamBid && dealer.team == myPlayer.team) {
+            } else if (serverData.options.teams && i == highestMakeableBid && totalBid == teamBid && dealer.team == myPlayer.team && dealer.index != myPlayer.index) {
                 color = 'bg-yellow-400'
                 hoverColor = 'hover:bg-yellow-600'
             }

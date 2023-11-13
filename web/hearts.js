@@ -359,6 +359,7 @@ class HeartsCore extends core.Core {
                 }
             }
         })
+        this.addUpdateDiff({}, { sound: { name: 'card' } })
         this.flushDiffs()
 
         this.turn = this.players.nextUnkicked(this.turn);

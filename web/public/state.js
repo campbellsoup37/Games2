@@ -80,10 +80,13 @@ export class ClientState {
         }
 
         let cardBack = document.getElementById('prefCardBack')
-        cardBack.addEventListener('click', () => { setCookie('cardBack', cardBack.value, 365) })
+        cardBack.addEventListener('change', () => { setCookie('cardBack', cardBack.value, 365) })
+
+        let soundVolume = document.getElementById('prefSoundVolume')
+        soundVolume.addEventListener('change', () => { setCookie('soundVolume', soundVolume.value, 365) })
 
         let showFps = document.getElementById('prefShowFps')
-        showFps.addEventListener('click', () => { setCookie('showFps', showFps.checked, 365) })
+        showFps.addEventListener('change', () => { setCookie('showFps', showFps.checked, 365) })
 
         document.getElementById('prefClose').addEventListener('click', () => preferences.style.display = 'none')
     }
