@@ -29,6 +29,7 @@ export class ClientStateOhHell extends ClientStateGameBase {
         this.showOneCard = false
         this.decision = undefined
         this.decisionResponded = false
+        this.preselectedBid = undefined
 
         this.bidTimer = 1
     }
@@ -113,6 +114,8 @@ export class ClientStateOhHell extends ClientStateGameBase {
         }
         this.canvas.pushTimerEntry(te)
     }
+
+    checkIfShouldBidPreselected() { return false }
 }
 
 export class ClientStateOhHellPreGame extends createClientStatePreGame(ClientStateOhHell) {
@@ -203,9 +206,13 @@ export class ClientStateOhHellBidding extends ClientStateOhHell {
         }
     }
     paintShowCardButton() { return this.canvas.cardInteractables && this.canvas.cardInteractables.length > 0 && this.canvas.cardInteractables[0].hidden() }
-    paintBidInteractables() { return this.isItMyTurn() }
+    paintBidInteractables() { return !this.baseState.myPlayer.bidded }
     paintHandInteractables() { return true }
     checkIfShouldPlayPreselected() { return false }
+
+    checkIfShouldBidPreselected() {
+        return this.isItMyTurn() && this.cannotBid !== undefined
+    }
 }
 
 export class ClientStateOhHellPlaying extends createClientStatePlaying(ClientStateOhHell) {
@@ -459,6 +466,10 @@ class OhHellCanvas extends CanvasBase {
 
                     isShown() { return this.members.length > 0; }
 
+                    isEnabled() {
+                        return document.getElementById('renameTeamDiv').style.display == 'none'
+                    }
+
                     paint() {
                         if (!thisCanvas.client.state.baseState.serverData || !thisCanvas.client.state.baseState.serverData.players || !thisCanvas.client.state.baseState.serverData.teams) {
                             return
@@ -487,13 +498,46 @@ class OhHellCanvas extends CanvasBase {
                         }
                     }
 
+                    renameTeam() {
+                        let newName = document.getElementById('renameTeamName').value
+                        if (newName.length == 0) {
+                            return false
+                        }
+
+                        thisCanvas.client.state.renameTeam(this.number, newName)
+                        return true
+                    }
+
                     click() {
                         let myPlayer = thisCanvas.client.state.baseState.myPlayer
                         if (parent.playerSelected !== undefined) {
                             thisCanvas.client.state.reteam(parent.playerSelected.index, this.number);
                             parent.playerSelected = undefined;
                         } else if (!myPlayer.kibitzer) {
-                            thisCanvas.client.state.reteam(myPlayer.index, this.number);
+                            if (myPlayer.team == this.number) {
+                                let popupOld = document.getElementById('renameTeamDiv')
+                                let popup = popupOld.cloneNode(true)
+                                popupOld.parentNode.replaceChild(popup, popupOld)
+                                popup.style.display = 'flex'
+
+                                document.getElementById('renameTeamAccept').addEventListener('click', () => {
+                                    let renamed = this.renameTeam()
+                                    if (renamed) {
+                                        popup.style.display = 'none'
+                                    }
+                                })
+                                document.getElementById('renameTeamName').addEventListener('keydown', e => {
+                                    if (e.keyCode == 13) {
+                                        let renamed = this.renameTeam()
+                                        if (renamed) {
+                                            popup.style.display = 'none'
+                                        }
+                                    }
+                                })
+                                document.getElementById('renameTeamCancel').addEventListener('click', () => popup.style.display = 'none')
+                            } else {
+                                thisCanvas.client.state.reteam(myPlayer.index, this.number);
+                            }
                         }
                     }
                 }
@@ -820,6 +864,17 @@ class OhHellCanvas extends CanvasBase {
         } else if (this.bidButtons.length > 0 && !paintBidInteractables) {
             this.removeBidInteractables()
         }
+
+        if (this.client.state.checkIfShouldBidPreselected()) {
+            let bid = this.client.state.baseState.preselectedBid
+            if (bid !== undefined) {
+                if (bid != this.client.state.cannotBid) {
+                    this.client.state.makeBid(bid)
+                    this.removeBidInteractables()
+                }
+                this.client.state.baseState.preselectedBid = undefined
+            }
+        }
     }
 
     makeBidInteractables() {
@@ -828,34 +883,13 @@ class OhHellCanvas extends CanvasBase {
         let myPlayer = baseState.myPlayer
         let serverData = baseState.serverData
 
-        let teamBid = 0
-        if (serverData.options.teams) {
-            teamBid = serverData.teams[myPlayer.team].members.map(i => serverData.players[i].bidded ? serverData.players[i].bid : 0).reduce((a, b) => a + b, 0)
-        }
-        let highestMakeableBid = myPlayer.hand.length - teamBid
-        let totalBid = serverData.players.map(p => p.bidded ? p.bid : 0).reduce((a, b) => a + b, 0)
-        let dealer = serverData.players[serverData.rounds[serverData.roundNumber].dealer]
-
         for (let i = 0; i <= myPlayer.hand.length; i++) {
             let button = document.createElement('button');
             button.innerHTML = i
-            let color = 'bg-white'
-            let hoverColor = 'hover:bg-gray-300'
-            if (i > highestMakeableBid) {
-                color = 'bg-red-300'
-                hoverColor = 'hover:bg-red-500'
-            } else if (serverData.options.teams && i == highestMakeableBid && totalBid == teamBid && dealer.team == myPlayer.team && dealer.index != myPlayer.index) {
-                color = 'bg-yellow-400'
-                hoverColor = 'hover:bg-yellow-600'
-            }
             button.classList.add(
-                color, 'rounded-lg', 'border', 'border-black', 'w-5', 'h-5',
-                'font-bold', 'text-sm', 'select-none', hoverColor
+                'rounded-lg', 'border', 'border-black', 'w-5', 'h-5',
+                'font-bold', 'text-sm', 'select-none'
             );
-            button.addEventListener('click', () => {
-                this.client.state.makeBid(i)
-                this.removeBidInteractables()
-            })
 
             let wrappedButton = new WrappedDOMElement(button);
             wrappedButton.x = () => (this.client.cachedWidth - baseState.scoreWidth) / 2 + i * 40 - myPlayer.hand.length * 40 / 2 - 15
@@ -864,6 +898,62 @@ class OhHellCanvas extends CanvasBase {
             wrappedButton.height = () => 30
             wrappedButton.container = () => document.getElementById('inGameDiv')
             wrappedButton.isEnabled = () => i != this.client.state.cannotBid
+
+            wrappedButton.currentState = { 'name': 'none', 'classes': [] }
+            wrappedButton.nextState = undefined
+            wrappedButton.update = () => {
+                if (baseState.isItMyTurn()) {
+                    let teamBid = 0
+                    if (serverData.options.teams) {
+                        teamBid = serverData.teams[myPlayer.team].members.map(i => serverData.players[i].bidded ? serverData.players[i].bid : 0).reduce((a, b) => a + b, 0)
+                    }
+                    let highestMakeableBid = myPlayer.hand.length - teamBid
+                    let totalBid = serverData.players.map(p => p.bidded ? p.bid : 0).reduce((a, b) => a + b, 0)
+                    let dealer = serverData.players[serverData.rounds[serverData.roundNumber].dealer]
+
+                    if (i > highestMakeableBid) {
+                        wrappedButton.nextState = { 'name': 'active', 'classes': ['bg-red-300', 'hover:bg-red-500', 'border-solid'] }
+                    } else if (serverData.options.teams && i == highestMakeableBid && totalBid == teamBid && dealer.team == myPlayer.team && dealer.index != myPlayer.index) {
+                        wrappedButton.nextState = { 'name': 'active', 'classes': ['bg-yellow-400', 'hover:bg-yellow-600', 'border-solid'] }
+                    } else {
+                        wrappedButton.nextState = { 'name': 'active', 'classes': ['bg-white', 'hover:bg-gray-300', 'border-solid'] }
+                    }
+                } else if (baseState.preselectedBid == i) {
+                    wrappedButton.nextState = { 'name': 'preselected', 'classes': ['bg-white', 'hover:bg-gray-300', 'border-dashed'] }
+                } else {
+                    wrappedButton.nextState = { 'name': 'preselectable', 'classes': ['hover:bg-gray-400', 'border-dashed'] }
+                }
+
+                if (wrappedButton.currentState.name == wrappedButton.nextState.name) {
+                    return
+                }
+
+                for (let c of wrappedButton.currentState.classes) {
+                    button.classList.remove(c)
+                }
+                wrappedButton.currentState = wrappedButton.nextState
+                for (let c of wrappedButton.currentState.classes) {
+                    button.classList.add(c)
+                }
+            }
+
+            button.addEventListener('click', () => {
+                if (!wrappedButton.currentState) {
+                    return
+                }
+
+                if (wrappedButton.currentState.name == 'preselected') {
+                    baseState.preselectedBid = undefined
+                }
+                if (wrappedButton.currentState.name == 'preselectable') {
+                    baseState.preselectedBid = i
+                }
+                if (wrappedButton.currentState.name == 'active') {
+                    this.client.state.makeBid(i)
+                    this.removeBidInteractables()
+                }
+            })
+
             this.bidButtons.push(wrappedButton);
         }
     }

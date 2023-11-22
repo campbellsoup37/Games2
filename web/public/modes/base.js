@@ -353,6 +353,10 @@ export function createClientStatePreGame(base) {
             this.client.emit('reteam', { index: index, team: team })
         }
 
+        renameTeam(team, name) {
+            this.client.emit('renameTeam', { team: team, name: name })
+        }
+
         scrambleTeams() {
             this.client.emit('scrambleteams')
         }

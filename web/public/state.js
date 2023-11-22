@@ -65,8 +65,10 @@ export class ClientState {
     }
 
     openPreferences() {
-        let preferences = document.getElementById('preferencesDiv')
-        //this.div.appendChild(preferences)
+        let preferencesOld = document.getElementById('preferencesDiv')
+        let preferences = preferencesOld.cloneNode(true)
+        preferencesOld.parentNode.replaceChild(preferences, preferencesOld)
+
         preferences.style.display = 'flex'
 
         let darkMode = document.getElementById('prefDarkMode')

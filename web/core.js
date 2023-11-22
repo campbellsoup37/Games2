@@ -963,6 +963,12 @@ class PlayersList {
         this.core.flushDiffs()
     }
 
+    renameTeam(number, name) {
+        this.teams[number].name = name
+        this.core.addUpdateDiff({ teams: { [number]: { name: name } } })
+        this.core.flushDiffs()
+    }
+
     scrambleTeams() {
         let properDivisors = [];
         for (let i = 2; i < this.size(); i++) {
@@ -1129,7 +1135,12 @@ class Core {
             return;
         }
 
-        this.attachStrategyModules();
+        try {
+            this.attachStrategyModules()
+        }
+        catch (err) {
+            return
+        }
         this.randomizePlayerOrder();
 
         this.buildRounds();
@@ -1315,6 +1326,10 @@ class Core {
         }
 
         this.players.reteam(index, number);
+    }
+
+    renameTeam(requester, number, team) {
+        this.players.renameTeam(number, team);
     }
 
     scrambleTeams(requester) {

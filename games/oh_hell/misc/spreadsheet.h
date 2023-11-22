@@ -112,11 +112,12 @@ public:
 		std::ofstream& outputFile;
 	};
 
-	Spreadsheet(int N, int D, double X2Threshold, std::ofstream& outputFile): total(13 * ((1 << N) - 1)) {
-		for (int i = 0; i < 13; i++) {
+	Spreadsheet(int N, int D, double X2Threshold, std::ofstream& outputFile): D(D), total(0) {
+		for (int i = 0; i < (D == 1 ? 1 : 13); i++) {
 			entries.emplace_back();
 			for (int j = 0; j < ((1 << N) - 1); j++) {
 				entries[i].emplace_back(D, i, X2Threshold, outputFile);
+				total++;
 			}
 		}
 
@@ -124,13 +125,20 @@ public:
 	}
 
 	bool add(int i, int j, int k, bool win) {
+		if (D == 1) {
+			if (k <= i) {
+				k++;
+			}
+			i = 0;
+		}
+
 		doneCount += entries[i][j].add(i, j, k, win, doneCount, total);
 
 		if (entries[i][j].cutoffNum == 13) {
 			propagateCutoff13(i, j);
 		}
 
-		if (entries[i][j].cutoffNum == 12 && i == 12) {
+		if (entries[i][j].cutoffNum == 12 && (i == 12 || D == 1)) {
 			// If cutoff and trump are both ace, and I bid 1, then everyone else must bid 0.
 			propagateCutoff13(i, 2 * j + 2);
 		}
@@ -157,24 +165,34 @@ public:
 	}
 
 	int getCutoffNum(int i, int j) {
-		return entries[i][j].cutoffNum;
+		int k = entries[D == 1 ? 0 : i][j].cutoffNum;
+		if (k == -1) {
+			return k;
+		}
+		if (D == 1 && k <= i) {
+			k--;
+		}
+		return k;
 	}
 
 	bool isConfident(int i, int j, int k) {
+		if (D == 1) {
+			if (k <= i) {
+				k++;
+			}
+			i = 0;
+		}
+
 		return entries[i][j].isConfident(k);
 	}
 
+	int D;
 	std::vector<std::vector<Entry>> entries; // index by (trump num, bid sequence)
 	int doneCount = 0;
 	int total;
 };
 
-void generateSpreadsheet(int N, int D, std::string output_fname) {
-	//	double X2Threshold = 7.879; // Confidence p = 0.005
-	double X2Threshold = 15.13670523; // Confidence p = 0.0001
-	//	double X2Threshold = 19.51142096464506; // Confidence p = 0.00001
-	bool verbose = false;
-
+void generateSpreadsheet(int N, int D, double X2Threshold, std::string output_fname, bool verbose) {
 	std::ofstream file;
 	file.open(output_fname);
 

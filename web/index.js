@@ -467,6 +467,23 @@ io.on("connection", function (socket) {
 
         game.core.reteam(user.player, data.index, data.team);
     });
+    socket.on('renameTeam', function (data) {
+        let user = userDict[socket.id];
+
+        if (user === undefined) {
+            log(`ERROR: socket ${socket.id} tried to rename team, but they are not in the user dict.`);
+            return;
+        }
+
+        let game = user.game;
+
+        if (!user.game) {
+            log(`ERROR: user ${user.id} tried to rename team, but they are not in a game.`);
+            return;
+        }
+
+        game.core.renameTeam(user.player, data.team, data.name);
+    })
     socket.on('scrambleteams', function () {
         let user = userDict[socket.id];
 

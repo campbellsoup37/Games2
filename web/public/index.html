@@ -108,6 +108,23 @@
             </div>
         </div>
 
+        <div class="fixed inset-0 flex items-center justify-center space-x-1" style="display:none;" id="renameTeamDiv">
+            <div class="bg-white bg-opacity-90 max-w-md w-full p-6 rounded-3xl border-black border text-center">
+                <div class="w-full mt-2" style="display:table;">
+                    <div class="w-full" style="display:table-row;">
+                        <p class="font-bold h-8 text-right mr-2" style="display:table-cell;">New team name:</p>
+                        <input type="text" autocomplete="off" class="bg-white rounded-lg border border-black w-full h-8 text-sm p-2 ml-2" style="display:table-cell;" id="renameTeamName">
+                    </div>
+                </div>
+                <div class="w-full mt-2" style="display:table;">
+                    <div class="w-full" style="display:table-row;">
+                        <button class="bg-white rounded-lg border border-black w-2/5 h-8 font-bold text-md select-none hover:bg-gray-300 mr-2" id="renameTeamAccept" style="display:table-cell;">Accept</button>
+                        <button class="bg-white rounded-lg border border-black w-2/5 h-8 font-bold text-md select-none hover:bg-gray-300 ml-2" id="renameTeamCancel" style="display:table-cell;">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="fixed inset-0 flex items-center justify-center" style="display:none;" id="inGameDiv">
             <div class="p-0 bg-white rounded-lg border-black border" id="igScoreSheetContainer" style="display:none;">
                 <div class="p-0 w-full flex" id="igScoreSheetHeaderContainer">
