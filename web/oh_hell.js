@@ -3,6 +3,8 @@ const core = require('./core')
 var ai = require('./ai');
 var ml = require('./ml');
 
+var fs = require('fs');
+
 var CoreState = {
     PREGAME: 'OH_HELL_PREGAME',
     BIDDING: 'OH_HELL_BIDDING',
@@ -156,38 +158,19 @@ class OhHellPlayer extends core.Player {
         this.wbProbs.push(p);
     }
 
-    startBid(data) {
-        if (data.turn == this.index && !this.kibitzer) {
-            this.bidAsync();
-        }
-    }
-
-    async bidAsync() {
+    async bidAsync(delay) {
         let bid = await this.strategyModule.makeBid();
-        this.bidReady(bid);
+        this.bidReady(bid, delay);
     }
 
-    startPlay(data) {
-        if (data.turn == this.index && !this.kibitzer) {
-            this.playAsync();
-        }
-    }
-
-    async playAsync() {
+    async playAsync(delay) {
         let card = await this.strategyModule.makePlay();
-        this.playReady(card);
+        this.playReady(card, delay);
     }
 
-    startDecision(data) {
-        if (!this.kibitzer) {
-            this.decision = data;
-            this.decisionAsync(data);
-        }
-    }
-
-    async decisionAsync(data) {
+    async decisionAsync(data, delay) {
         let choice = await this.strategyModule.makeDecision(data);
-        this.decisionReady(choice);
+        this.decisionReady(choice, delay);
     }
 
     addQs(i, qs) {
@@ -246,7 +229,8 @@ class OhHellCore extends core.Core {
             trump: this.trump,
             players: this.players.playersDict(index),
             kibitzers: this.players.kibitzersDict(index),
-            teams: this.players.teams.map(t => t.toDict())
+            teams: this.players.teams.map(t => t.toDict()),
+            spreadsheetSequence: this.spreadsheetSequence
         };
     }
 
@@ -278,16 +262,16 @@ class OhHellCore extends core.Core {
 
     transitionFromStart() {
         try {
-            let T = this.options.teams ? this.players.teams.filter(t => t.members.length > 0).length : 0;
-            let path = `./models/N${this.players.size()}/D${this.options.D}/T${T}/ss.txt`;
+            let T = this.options.teams ? this.players.teams.filter(t => t.members.length > 0).length : 0
+            let path = `./models/N${this.players.size()}/D${this.options.D}/T${T}/ss.txt`
             if (fs.existsSync(path)) {
-                this.spreadsheet = fs.readFileSync(path, 'utf8');
-                this.spreadsheet = this.spreadsheet.split('\r\n').map(row => row.split(','));
+                this.spreadsheet = fs.readFileSync(path, 'utf8')
+                this.spreadsheet = this.spreadsheet.split('\r\n')
             }
         } catch (err) {
-            this.spreadsheet = undefined;
+            this.spreadsheet = undefined
         }
-        this.deal();
+        this.deal()
     }
 
     getNextHands() {
@@ -330,14 +314,43 @@ class OhHellCore extends core.Core {
         this.state = CoreState.BIDDING;
         this.canUndo = -1;
 
-        //this.players.communicateTurn(this.state, this.turn, { ss: this.spreadsheet ? this.spreadsheet[0] : undefined });
-        this.players.players[this.turn].bidAsync()
+        if (this.spreadsheet) {
+            this.spreadsheetRow = this.spreadsheet[this.trump.num - 2]
+            this.sendSpreadsheet()
+        }
+        this.players.players[this.turn].bidAsync(0)
 
         this.flushDiffs()
         this.addUpdateDiff({ state: this.state, turn: this.turn, canUndo: this.canUndo })
         this.flushDiffs(this.players.players.filter(p => p.index != this.turn).concat(this.players.kibitzers))
         this.addUpdateDiff({ state: this.state, turn: this.turn, canUndo: this.canUndo }, { cannotBid: this.whatCanINotBid(this.turn) })
         this.flushDiffs([this.players.players[this.turn]])
+    }
+
+    sendSpreadsheet() {
+        if (this.rounds[this.roundNumber].handSize != 1) {
+            this.addRemoveDiff({ spreadsheetSequence: null })
+            this.flushDiffs()
+            return
+        }
+
+        if (!this.spreadsheet) {
+            return
+        }
+
+        let bidJ = 0
+        this.spreadsheetSequence = this.spreadsheetRow.charAt(0)
+        for (let i = 0; i < this.players.size(); i++) {
+            let j = (this.rounds[this.roundNumber].dealer + 1 + i) % this.players.size()
+            if (!this.players.players[j].bidded) {
+                break
+            }
+            bidJ = bidJ * 2 + this.players.players[j].bid + 1
+            this.spreadsheetSequence += this.spreadsheetRow.charAt(bidJ)
+        }
+
+        this.addUpdateDiff({ spreadsheetSequence: this.spreadsheetSequence })
+        this.flushDiffs()
     }
 
     incomingBid(index, bid) {
@@ -357,7 +370,16 @@ class OhHellCore extends core.Core {
             return;
         }
 
-        this.addUpdateDiff({}, { move: { human: player.human && !player.replacedByRobot } })
+        this.addUpdateDiff({ canUndo: -1 })
+        this.flushDiffs(undefined, true)
+
+        let delay = 0
+        let isHuman = player.human && !player.replacedByRobot
+        if (isHuman && !player.usedUndoBid) {
+            delay = 2000
+        }
+
+        this.addUpdateDiff({}, { move: { human: isHuman } })
         this.flushDiffs()
 
         let offset = 0;
@@ -385,24 +407,20 @@ class OhHellCore extends core.Core {
 
         this.turn = this.players.nextUnkicked(this.turn);
 
-        let bidI = 0;
-        for (let i = 0; i < this.players.size() && this.rounds[this.roundNumber].handSize == 1; i++) {
-            let j = (this.rounds[this.roundNumber].dealer + 1 + i) % this.players.size();
-            bidI += (this.players.get(j).bid << i);
-        }
+        this.sendSpreadsheet()
 
         let choices = {}
-        let data = { canPlay: undefined, ss: this.spreadsheet && this.rounds[this.roundNumber].handSize == 1 ? this.spreadsheet[bidI] : undefined };
+        let data = { canPlay: undefined }
         if (this.players.allHaveBid()) {
             this.state = CoreState.PLAYING
             this.trickOrder = new core.TrickOrder(this.trump.suit)
             let canPlay = this.whatCanIPlay(this.turn)
             data.canPlay = canPlay
             choices.canPlay = canPlay
-            this.players.players[this.turn].playAsync()
+            this.players.players[this.turn].playAsync(delay)
         } else {
             choices.cannotBid = this.whatCanINotBid(this.turn)
-            this.players.players[this.turn].bidAsync()
+            this.players.players[this.turn].bidAsync(delay)
         }
 
         //this.players.communicateTurn(this.state, this.turn, data)
@@ -447,7 +465,7 @@ class OhHellCore extends core.Core {
         this.flushDiffs()
 
         let choices = { cannotBid: this.whatCanINotBid(this.turn) }
-        this.players.players[this.turn].bidAsync()
+        this.players.players[this.turn].bidAsync(0)
         this.flushDiffs()
         this.addUpdateDiff({ state: this.state, turn: this.turn })
         this.flushDiffs(this.players.players.filter(p => p.index != this.turn).concat(this.players.kibitzers))
@@ -478,6 +496,9 @@ class OhHellCore extends core.Core {
             log('ERROR: Player "' + player.id + '" played card ' + card.toString() + ' with mismatching cardIndex ' + cardIndex + '.');
             return;
         }
+
+        this.addUpdateDiff({ canUndo: -1 })
+        this.flushDiffs(undefined, true)
 
         this.seen.add(card);
 
@@ -510,7 +531,7 @@ class OhHellCore extends core.Core {
         if (!this.players.allHavePlayed()) {
             let canPlay = this.whatCanIPlay(this.turn)
             //this.players.communicateTurn(this.state, this.turn, { canPlay: canPlay })
-            this.players.players[this.turn].playAsync()
+            this.players.players[this.turn].playAsync(0)
 
             this.flushDiffs()
             this.addUpdateDiff({ state: this.state, turn: this.turn })
@@ -544,7 +565,7 @@ class OhHellCore extends core.Core {
             if (!this.players.hasEmptyHand(this.turn)) {
                 let canPlay = this.whatCanIPlay(this.turn)
                 //this.players.communicateTurn(this.state, this.turn, { canPlay: canPlay });
-                this.players.players[this.turn].playAsync()
+                this.players.players[this.turn].playAsync(0)
 
                 this.flushDiffs()
                 this.addUpdateDiff({ state: this.state, turn: this.turn })

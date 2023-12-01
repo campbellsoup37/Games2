@@ -157,46 +157,24 @@ class Player {
         //this.commandBid(data);
     }
 
-    async bidAsync() {
+    async bidAsync(delay) {
         let bid = await this.strategyModule.makeBid();
-        this.bidReady(bid);
+        this.bidReady(bid, delay);
     }
 
-    startPlay(data) {
-        if (data.turn == this.index && !this.kibitzer) {
-            this.playAsync();
-        }
-        //this.commandPlay(data);
-    }
-
-    async playAsync() {
+    async playAsync(delay) {
         let card = await this.strategyModule.makePlay();
-        this.playReady(card);
+        this.playReady(card, delay);
     }
 
-    startPass(data) {
-        if (!this.kibitzer) {
-            this.passAsync();
-        }
-        //this.commandPass(data);
-    }
-
-    async passAsync() {
+    async passAsync(delay) {
         let cards = await this.strategyModule.makePass();
-        this.passReady(cards);
+        this.passReady(cards, delay);
     }
 
-    startDecision(data) {
-        if (!this.kibitzer) {
-            this.decision = data;
-            this.decisionAsync(data);
-            this.commandDecision(data);
-        }
-    }
-
-    async decisionAsync(data) {
+    async decisionAsync(data, delay) {
         let choice = await this.strategyModule.makeDecision(data);
-        this.decisionReady(choice);
+        this.decisionReady(choice, delay);
     }
 
     reconnect(player) { }
@@ -253,8 +231,9 @@ function createHumanPlayer(base) {
             this.user.send('gamestate', data);
         }
 
-        flushDiffs(data) {
-            this.user.send('gamestate', data);
+        flushDiffs(data, immediate) {
+            let name = immediate ? 'gamestate_immediate' : 'gamestate'
+            this.user.send(name, data)
         }
 
         commandAddPlayers(data) {
@@ -349,8 +328,9 @@ function createHumanPlayer(base) {
             }
         }
 
-        bidReady(bid) {
+        async bidReady(bid, delay) {
             if (this.replacedByRobot) {
+                await new Promise(r => setTimeout(r, delay))
                 this.core.incomingBid(this.index, bid);
                 this.readiedBid = undefined;
             } else {
@@ -358,8 +338,9 @@ function createHumanPlayer(base) {
             }
         }
 
-        playReady(card) {
+        async playReady(card, delay) {
             if (this.replacedByRobot) {
+                await new Promise(r => setTimeout(r, delay))
                 this.core.incomingPlay(this.index, card);
                 this.readiedPlay = undefined;
             } else {
@@ -367,8 +348,9 @@ function createHumanPlayer(base) {
             }
         }
 
-        passReady(cards) {
+        async passReady(cards, delay) {
             if (this.replacedByRobot) {
+                await new Promise(r => setTimeout(r, delay))
                 this.core.incomingPass(this.index, cards);
                 this.readiedPass = undefined;
             } else {
@@ -376,8 +358,9 @@ function createHumanPlayer(base) {
             }
         }
 
-        decisionReady(choice) {
+        async decisionReady(choice, delay) {
             if (this.replacedByRobot) {
+                await new Promise(r => setTimeout(r, delay))
                 this.core.makeDecision(this.index, choice);
                 this.readiedDecision = undefined;
             } else {
@@ -407,19 +390,23 @@ function createAiPlayer(base) {
             this.core = core;
         }
 
-        bidReady(bid) {
+        async bidReady(bid, delay) {
+            await new Promise(r => setTimeout(r, delay))
             this.core.incomingBid(this.index, bid);
         }
 
-        playReady(card) {
+        async playReady(card, delay) {
+            await new Promise(r => setTimeout(r, delay))
             this.core.incomingPlay(this.index, card);
         }
 
-        passReady(cards) {
+        async passReady(cards, delay) {
+            await new Promise(r => setTimeout(r, delay))
             this.core.incomingPass(this.index, cards);
         }
 
-        decisionReady(choice) {
+        async decisionReady(choice, delay) {
+            await new Promise(r => setTimeout(r, delay))
             this.core.makeDecision(this.index, choice);
         }
 
@@ -1007,18 +994,18 @@ class PlayersList {
         //}
     }
 
-    flushDiffs(players) {
+    flushDiffs(players, immediate) {
         if (!players) {
             for (let player of this.players) {
-                player.flushDiffs(this.core.diffs)
+                player.flushDiffs(this.core.diffs, immediate)
             }
             for (let player of this.kibitzers) {
-                player.flushDiffs(this.core.diffs)
+                player.flushDiffs(this.core.diffs, immediate)
             }
         }
         else {
             for (let player of players) {
-                player.flushDiffs(this.core.diffs)
+                player.flushDiffs(this.core.diffs, immediate)
             }
         }
     }

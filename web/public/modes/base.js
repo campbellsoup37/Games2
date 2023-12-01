@@ -1,4 +1,4 @@
-import { Card } from '../basics.js'
+import { cardToNumber, Card } from '../basics.js'
 
 import { ClientState } from '../state.js'
 
@@ -32,7 +32,7 @@ export class ClientStateGameBase extends ClientState {
         this.sortScoresDescending = true
         this.myPlayer = undefined
         this.message = ''
-        this.preselected = []
+        this.preselected = new PreselectionList()
         this.decision = undefined
         this.decisionResponded = false
 
@@ -49,28 +49,8 @@ export class ClientStateGameBase extends ClientState {
         super.enter(data)
     }
 
-    clearPreselected(index) {
-        for (let i = index; i < this.baseState.preselected.length; i++) {
-            this.baseState.preselected[i].preselection = -1
-        }
-        this.baseState.preselected.splice(index, this.baseState.preselected.length - index)
-    }
-
-    shiftPreselected(index) {
-        if (this.baseState.preselected.length == 0) {
-            return
-        }
-
-        this.baseState.preselected[0].preselection = -1
-
-        this.baseState.preselected.shift()
-        for (const inter of this.baseState.preselected) {
-            inter.preselection--
-        }
-    }
-
     clickOnNothing() {
-        this.clearPreselected(0)
+        this.baseState.preselected.clear(0)
     }
 
     updateServerData(data) {
@@ -220,9 +200,8 @@ export class ClientStateGameBase extends ClientState {
     scoreSheetTeams() { return this.baseState.serverData.teams }
     scoreSheetRounds() { return this.baseState.serverData.rounds }
     scoreSheetOptions() { return this.baseState.serverData.options }
-    cardSelected(card) { return card.preselection != -1 }
+    cardSelected(card) { return card.preselection != undefined }
     cardEnabled(card) { return false }
-    cardClicked(card) { }
     paintShowCardButton() { return false }
     paintHandInteractables() { return false }
     paintBidAndDealerChips() { return false }
@@ -234,6 +213,10 @@ export class ClientStateGameBase extends ClientState {
     // server entry points
     gamestate(data) {
         this.pushBasicTimer(() => this.updateServerData(data), 0, false)
+    }
+
+    gamestate_immediate(data) {
+        this.updateServerData(data)
     }
 
     kick(data) {
@@ -333,6 +316,7 @@ export function createClientStatePreGame(base) {
 
         enter(data) {
             super.enter(data)
+            this.baseState.preselected.clear(0)
             this.baseState.scoreWidth = 0
             document.getElementById("doubleDeckOptionsRow").style.display = 'table-row'
             document.getElementById("teamsOptionsRow").style.display = 'table-row'
@@ -487,22 +471,6 @@ export function createClientStatePlaying(base) {
                 return true
             }
         }
-        cardClicked(card) {
-            if (this.baseState.serverData.turn == this.baseState.myPlayer.index && this.baseState.myPlayer.trick.num == 0) {
-                if (this.baseState.preselected.length == 0) {
-                    this.playCard(card)
-                } else {
-                    return
-                }
-            } else {
-                if (card.preselection == -1) {
-                    card.preselection = this.baseState.preselected.length
-                    this.baseState.preselected.push(card)
-                } else {
-                    this.baseState.clearPreselected(card.preselection)
-                }
-            }
-        }
         paintHandInteractables() { return true }
         enableClaimButton() { return true }
     }
@@ -540,6 +508,7 @@ export function createClientStatePostGame(base) {
 
         enter(data) {
             super.enter(data)
+            this.baseState.preselected.clear(0)
 
             if (data) {
                 this.baseState.scoreWidth = 450
@@ -562,6 +531,77 @@ export function createClientStatePostGame(base) {
         }
     }
     return ClientStatePostGame
+}
+
+export class PreselectionList {
+    constructor() {
+        this.queue = []
+    }
+
+    clear(index) {
+        for (let i = index; i < this.queue.length; i++) {
+            this.queue[i].preselection = undefined
+        }
+        this.queue.splice(index, this.queue.length - index)
+    }
+
+    shift() {
+        if (this.queue.length == 0) {
+            return
+        }
+
+        this.queue[0].preselection = undefined
+
+        this.queue.shift()
+        for (let action of this.queue) {
+            action.preselection--
+        }
+    }
+
+    push(action) {
+        action.preselection = this.queue.length
+        this.queue.push(action)
+        if (this.queue.length == 1) {
+            this.update()
+        }
+    }
+
+    empty() {
+        return this.queue.length == 0
+    }
+
+    update() {
+        if (this.queue.length == 0) {
+            return
+        }
+
+        let action = this.queue[0]
+        if (action.preselectCheck()) {
+            if (action.preselectPass()) {
+                action.preselectAction()
+                this.shift()
+            } else {
+                this.clear(0)
+            }
+        }
+    }
+
+    paint(ctx) {
+        this.update()
+
+        if (this.queue.length <= 1) {
+            return
+        }
+
+        for (let action of this.queue) {
+            drawText(ctx,
+                action.preselection + 1,
+                action.preselectX(),
+                action.preselectY(),
+                1, 1, font.bold, 'blue'
+            );
+        }
+    }
 }
 
 export class CanvasBase extends OhcCanvas {
@@ -1017,15 +1057,7 @@ export class CanvasBase extends OhcCanvas {
         if (!this.client.state.paintPreselected()) {
             return;
         }
-
-        for (const inter of this.client.state.baseState.preselected) {
-            drawText(this.client.ctx,
-                inter.preselection + 1,
-                inter.x() + 20,
-                inter.y() - 20,
-                1, 1, font.bold, 'blue'
-            );
-        }
+        this.client.state.baseState.preselected.paint(this.client.ctx)
     }
 
     paintTaken() {
@@ -1265,21 +1297,25 @@ export class CanvasBase extends OhcCanvas {
                 }
             }
         }
-
-        if (this.client.state.checkIfShouldPlayPreselected()) {
-            if (this.client.state.baseState.preselected.length > 0) {
-                let card = this.client.state.baseState.preselected[0]
-                if (this.client.state.canPlayCard(card.getCard())) {
-                    this.client.state.playCard(card)
-                    this.client.state.baseState.shiftPreselected()
-                } else {
-                    this.client.state.baseState.clearPreselected(0)
-                }
-            }
-        }
     }
 
     makeHandInteractables() {
+        let preselected = this.client.state.baseState.preselected
+        let preselectMemo = {}
+        let newPreselected = []
+        for (let card of preselected.queue) {
+            if (card.getCard == undefined) {
+                break
+            }
+            let code = cardToNumber(card.getCard())
+            if (preselectMemo[code] == undefined) {
+                preselectMemo[code] = []
+            }
+            preselectMemo[code].push(card.preselection)
+            newPreselected.push(undefined)
+        }
+        preselected.clear(0)
+
         this.cardInteractables.length = 0;
         let myPlayer = this.client.state.baseState.myPlayer
         for (let i = 0; i < myPlayer.hand.length; i++) {
@@ -1290,16 +1326,39 @@ export class CanvasBase extends OhcCanvas {
                 - (myPlayer.hand.length - 1) * this.cardSeparation / 2
             card.yCenter = () =>
                 this.client.cachedHeight - this.handYOffset - (this.client.state.cardSelected(card) ? this.selectedCardYOffset : 0)
-            card.yPaintOffset = () => (card.isMoused() ? -10 : 0) // + (pass && pass.isSelected(card.getCard()) ? -10 : 0)
+            card.yPaintOffset = () => (card.isMoused() ? -10 : 0)
             card.isEnabled = () => this.client.state.cardEnabled(card)
             card.isShown = () => this.client.state.paintPlayers()
             card.hidden = () => this.client.state.hideCard(card.getCard())
-            card.dark = () => card.isMoused() || this.client.state.baseState.preselected.length > 0 && card.preselection == -1
-            card.preselection = -1;
+            card.dark = () => card.isMoused()
             card.cursor = () => 'pointer'
-            card.click = () => this.client.state.cardClicked(card)
+            card.click = () => {
+                if (card.preselection == undefined) {
+                    preselected.push(card)
+                } else {
+                    preselected.clear(card.preselection)
+                }
+            }
 
-            this.cardInteractables.push(card);
+            card.preselectX = () => card.x() + 20
+            card.preselectY = () => card.y() - 20
+            card.preselectCheck = () => this.client.state.checkIfShouldPlayPreselected()
+            card.preselectPass = () => this.client.state.canPlayCard(card.getCard())
+            card.preselectAction = () => this.client.state.playCard(card)
+
+            this.cardInteractables.push(card)
+
+            let code = cardToNumber(card.getCard())
+            let preselection = preselectMemo[code]
+            if (preselection !== undefined && preselection.length > 0) {
+                newPreselected[preselection.pop()] = card
+            }
+        }
+
+        if (!newPreselected.includes(undefined)) {
+            for (let card of newPreselected) {
+                preselected.push(card)
+            }
         }
     }
 

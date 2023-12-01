@@ -97,16 +97,9 @@ class HeartsPlayer extends core.Player {
         this.cardsTaken = this.cardsTaken.concat(cards)
     }
 
-    startPass(data) {
-        if (!this.kibitzer) {
-            this.passAsync();
-        }
-        //this.commandPass(data);
-    }
-
-    async passAsync() {
+    async passAsync(delay) {
         let cards = await this.strategyModule.makePass();
-        this.passReady(cards);
+        this.passReady(cards, delay);
     }
 
     addMakingProbs(probs) { }
@@ -235,7 +228,7 @@ class HeartsCore extends core.Core {
             this.state = CoreState.PASSING;
             //this.players.communicateTurn(this.state, this.turn);
             for (let player of this.players.players) {
-                player.passAsync()
+                player.passAsync(0)
             }
             this.addUpdateDiff({ state: this.state })
             this.flushDiffs()
@@ -310,7 +303,7 @@ class HeartsCore extends core.Core {
         this.precalculatedPoints = undefined;
         this.shooter = -2; // -2 nobody has taking points, -1 points are split, otherwise index of shooter
         //this.players.communicateTurn(this.state, this.turn, { canPlay: this.whatCanIPlay(this.turn) });
-        this.players.players[this.turn].playAsync()
+        this.players.players[this.turn].playAsync(0)
 
         this.flushDiffs()
         this.addUpdateDiff({ state: this.state, turn: this.turn })
@@ -366,7 +359,7 @@ class HeartsCore extends core.Core {
 
         if (!this.players.allHavePlayed()) {
             //this.players.communicateTurn(this.state, this.turn, { canPlay: this.whatCanIPlay(this.turn) });
-            this.players.players[this.turn].playAsync()
+            this.players.players[this.turn].playAsync(0)
 
             this.flushDiffs()
             this.addUpdateDiff({ state: this.state, turn: this.turn })
@@ -412,7 +405,7 @@ class HeartsCore extends core.Core {
             if (!this.players.hasEmptyHand(this.turn)) {
                 //this.players.communicateTurn(this.state, this.turn, { canPlay: this.whatCanIPlay(this.turn) });
                 let canPlay = this.whatCanIPlay(this.turn)
-                this.players.players[this.turn].playAsync()
+                this.players.players[this.turn].playAsync(0)
 
                 this.flushDiffs()
                 this.addUpdateDiff({ state: this.state, turn: this.turn })

@@ -1,3 +1,7 @@
+export function cardToNumber(card) {
+    return card.num - 2 + 13 * card.suit
+}
+
 export class Card {
     constructor(num, suit) {
         if (!arguments.length) {

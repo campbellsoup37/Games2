@@ -70,7 +70,7 @@ export class ClientStateHearts extends ClientStateGameBase {
 
     paintPassButton() { return false }
     paintPass() { return false }
-    cardSelected(card) { return card.preselection != -1 || this.pass && this.pass.isSelected(card.getCard()) }
+    cardSelected(card) { return card.preselection != undefined || this.pass && this.pass.isSelected(card.getCard()) }
 }
 
 export class ClientStateHeartsPreGame extends createClientStatePreGame(ClientStateHearts) {
@@ -157,7 +157,13 @@ export class ClientStateHeartsPassing extends ClientStateHearts {
     enablePoking(player) { return this.highlightPlayer(player) }
     paintScoreSheet() { return true }
     cardEnabled(card) { return !this.baseState.myPlayer.bidded }
-    cardClicked(card) {
+    paintHandInteractables() { return true }
+    checkIfShouldPlayPreselected() { return true }
+    paintPassButton() { return !this.baseState.myPlayer.passed && !this.baseState.myPlayer.kibitzer }
+    paintPass() { return true }
+
+    canPlayCard(card) { return true }
+    playCard(card) {
         if (this.baseState.myPlayer.passed) {
             return
         }
@@ -167,10 +173,6 @@ export class ClientStateHeartsPassing extends ClientStateHearts {
             this.pass.select(card.getCard())
         }
     }
-    paintHandInteractables() { return true }
-    checkIfShouldPlayPreselected() { return false }
-    paintPassButton() { return !this.baseState.myPlayer.passed && !this.baseState.myPlayer.kibitzer }
-    paintPass() { return true }
 
     makePass(cards) {
         this.client.emit('pass', { cards: cards })

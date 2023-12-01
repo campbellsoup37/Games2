@@ -79,19 +79,19 @@ class EuchrePlayer extends core.Player {
         this.bidded = false
     }
 
-    async chooseTrumpAsync() {
+    async chooseTrumpAsync(delay) {
         let choice = await this.strategyModule.chooseTrump()
-        this.trumpChoiceReady(choice)
+        this.trumpChoiceReady(choice, delay)
     }
 
-    async orderUpAsync() {
+    async orderUpAsync(delay) {
         let choice = await this.strategyModule.orderUp()
-        this.discardReady(new cards.Card(choice.discard))
+        this.discardReady(new cards.Card(choice.discard), delay)
     }
 
-    async playAsync() {
+    async playAsync(delay) {
         let choice = await this.strategyModule.makePlay()
-        this.playReady(new cards.Card(choice.card))
+        this.playReady(new cards.Card(choice.card), delay)
     }
 
     addTrumpChoice(choice) {
@@ -255,7 +255,7 @@ class EuchreCore extends core.Core {
     transitionFromDeal() {
         this.state = CoreState.TRUMP
         this.phase = 0
-        this.players.players[this.turn].chooseTrumpAsync()
+        this.players.players[this.turn].chooseTrumpAsync(0)
         this.addUpdateDiff({ state: this.state, phase: this.phase, turn: this.turn })
         this.flushDiffs()
     }
@@ -302,7 +302,7 @@ class EuchreCore extends core.Core {
                 this.flushDiffs()
             }
 
-            this.players.players[this.turn].chooseTrumpAsync()
+            this.players.players[this.turn].chooseTrumpAsync(0)
         } else {
             this.trump = response.trump
             this.alone = response.alone
@@ -339,7 +339,7 @@ class EuchreCore extends core.Core {
         let player = this.players.players[dealer]
         player.hand.push(this.upCard)
         player.hand.sort((c1, c2) => c1.compSortEuchre(c2, this.trump))
-        player.orderUpAsync()
+        player.orderUpAsync(0)
         this.addUpdateDiff({ state: this.state, turn: dealer })
         this.flushDiffs()
 
@@ -388,7 +388,7 @@ class EuchreCore extends core.Core {
         this.leader = this.turn
 
         this.canPlay = this.whatCanIPlay()
-        this.players.players[this.turn].playAsync()
+        this.players.players[this.turn].playAsync(0)
 
         this.flushDiffs()
         this.addUpdateDiff({ state: this.state, turn: this.turn })
@@ -444,7 +444,7 @@ class EuchreCore extends core.Core {
 
         if (response.trickWinner == -1) {
             this.canPlay = this.whatCanIPlay()
-            this.players.players[this.turn].playAsync()
+            this.players.players[this.turn].playAsync(0)
 
             this.flushDiffs()
             this.addUpdateDiff({ state: this.state, turn: this.turn })
@@ -475,7 +475,7 @@ class EuchreCore extends core.Core {
 
             if (response.roundResult == -1) {
                 this.canPlay = this.whatCanIPlay()
-                this.players.players[this.turn].playAsync()
+                this.players.players[this.turn].playAsync(0)
 
                 this.flushDiffs()
                 this.addUpdateDiff({ state: this.state, turn: this.turn })

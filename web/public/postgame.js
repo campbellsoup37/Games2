@@ -79,11 +79,20 @@ export class PostGamePage extends WrappedDOMElement {
         if (data.options.teams) {
             plotDatas = data.teams.filter(t => t.members.length > 0).map(function (t) {
                 let p = data.players[t.members[0]];
+                let wbProbs = [100 / data.players.length]
+                if (p.wbProbs) {
+                    for (let i = 0; i < p.wbProbs.length; i++) {
+                        wbProbs.push(Math.min(
+                            t.members.map(m => data.players[m].wbProbs[i] * 100).reduce((a, b) => a + b, 0),
+                            100
+                        ))
+                    }
+                }
                 return {
                     name: t.name,
                     index: t.number,
                     scores: [0].concat(p.scores),
-                    wbProbs: [100 / data.players.length].concat(p.wbProbs ? p.wbProbs.map(x => 100 * x) : [])
+                    wbProbs: wbProbs
                 };
             });
         } else {

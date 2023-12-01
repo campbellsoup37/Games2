@@ -29,7 +29,6 @@ export class ClientStateOhHell extends ClientStateGameBase {
         this.showOneCard = false
         this.decision = undefined
         this.decisionResponded = false
-        this.preselectedBid = undefined
 
         this.bidTimer = 1
     }
@@ -68,7 +67,7 @@ export class ClientStateOhHell extends ClientStateGameBase {
 
     paintTrump() { return false }
     paintShowSpreadsheet() { return false }
-    paintSpreadsheet() { this.paintShowSpreadsheet() && this.baseState.showSpreadsheet }
+    paintSpreadsheet() { return this.paintShowSpreadsheet() && this.baseState.showSpreadsheet }
     bidChipColor(player) { return 'rgba(255, 255, 255, 0.7)' }
     paintBidInteractables() { return false }
     hideCard(card) { return !this.baseState.showOneCard }
@@ -185,10 +184,7 @@ export class ClientStateOhHellBidding extends ClientStateOhHell {
     paintPlayers() { return true }
     paintTaken() { return true }
     paintUndoBid() { return !this.baseState.myPlayer.kibitzer && this.baseState.myPlayer.index == this.baseState.serverData.canUndo }
-    paintShowSpreadsheet() {
-        let data = this.baseState.serverData
-        return data.rounds[data.roundNumber] && data.rounds[data.roundNumber].handSize == 1
-    }
+    paintShowSpreadsheet() { return this.baseState.serverData.spreadsheetSequence !== undefined }
     paintCornerButtons() { return true }
     paintPreselected() { return true }
     paintNamePlates() { return true }
@@ -196,17 +192,9 @@ export class ClientStateOhHellBidding extends ClientStateOhHell {
     enablePoking(player) { return this.highlightPlayer(player) }
     paintBidAndDealerChips() { return true }
     paintScoreSheet() { return true }
-    cardEnabled(card) { return this.baseState.myPlayer.bidded }
-    cardClicked(card) {
-        if (card.preselection == -1) {
-            card.preselection = this.baseState.preselected.length
-            this.baseState.preselected.push(card)
-        } else {
-            this.baseState.clearPreselected(card.preselection)
-        }
-    }
+    cardEnabled(card) { return this.baseState.myPlayer.bidded || !this.baseState.preselected.empty() }
     paintShowCardButton() { return this.canvas.cardInteractables && this.canvas.cardInteractables.length > 0 && this.canvas.cardInteractables[0].hidden() }
-    paintBidInteractables() { return !this.baseState.myPlayer.bidded }
+    paintBidInteractables() { return !this.baseState.myPlayer.kibitzer && !this.baseState.myPlayer.bidded }
     paintHandInteractables() { return true }
     checkIfShouldPlayPreselected() { return false }
 
@@ -226,11 +214,8 @@ export class ClientStateOhHellPlaying extends createClientStatePlaying(ClientSta
         return data.roundNumber < data.rounds.length && !this.baseState.myPlayer.kibitzer && data.options.teams
     }
     paintTrump() { return this.baseState.serverData.trump !== undefined }
-    paintUndoBid() { return this.baseState.myPlayer.index == this.baseState.serverData.canUndo }
-    paintShowSpreadsheet() {
-        let data = this.baseState.serverData
-        return data.rounds[data.roundNumber] && data.rounds[data.roundNumber].handSize == 1
-    }
+    paintUndoBid() { return !this.baseState.myPlayer.kibitzer && this.baseState.myPlayer.index == this.baseState.serverData.canUndo }
+    paintShowSpreadsheet() { return this.baseState.serverData.spreadsheetSequence !== undefined }
     paintBidAndDealerChips() { return true }
     bidChipColor(player) {
         if (this.baseState.bidTimer < 1) {
@@ -749,10 +734,10 @@ class OhHellCanvas extends CanvasBase {
                 this.rowHeight = 15;
             }
 
-            x() { return (cachedWidth - scoreWidth) / 2 - 200; }
-            y() { return cachedHeight / 2 - this.height() / 2; }
+            x() { return (thisCanvas.client.cachedWidth - thisCanvas.client.state.baseState.scoreWidth) / 2 - 200; }
+            y() { return thisCanvas.client.cachedHeight / 2 - this.height() / 2; }
             width() { return 400; }
-            height() { return 2 * this.margin + this.rowHeight * (1 + players.length); }
+            height() { return 2 * this.margin + this.rowHeight * (1 + thisCanvas.client.state.baseState.serverData.players.length); }
             container() { return document.getElementById('inGameDiv'); }
 
             isShown() { return thisCanvas.client.state.paintSpreadsheet() }
@@ -773,12 +758,16 @@ class OhHellCanvas extends CanvasBase {
                 drawText(this.ctx, 'bid', this.width() * 5 / 6, this.rowHeight / 2, 1, 1, font.small, 'black');
                 drawLine(this.ctx, this.margin, this.rowHeight, this.width() - this.margin, this.rowHeight);
 
+                let data = thisCanvas.client.state.baseState.serverData
+                let players = data.players
+                let dealer = data.rounds[data.roundNumber].dealer
+
                 let unbidFound = false;
                 for (let j = 0; j < players.length; j++) {
-                    let i = (rounds[roundNumber].dealer + 1 + j) % players.length;
+                    let i = (dealer + 1 + j) % players.length;
 
                     drawText(this.ctx, players[i].name, this.width() * 1 / 6, this.rowHeight * (2 * j + 3) / 2, 1, 1, font.small, 'black');
-                    let cutoff = !unbidFound || players[i].bidded ? (spreadsheetRow ? spreadsheetRow[j] : 'todo') : '';
+                    let cutoff = !unbidFound || players[i].bidded ? data.spreadsheetSequence.charAt(j) : '';
                     drawText(this.ctx, cutoff, this.width() * 1 / 2, this.rowHeight * (2 * j + 3) / 2, 1, 1, font.small, 'black');
                     let bid = players[i].bidded ? players[i].bid : '';
                     drawText(this.ctx, bid, this.width() * 5 / 6, this.rowHeight * (2 * j + 3) / 2, 1, 1, font.small, 'black');
@@ -802,7 +791,7 @@ class OhHellCanvas extends CanvasBase {
         this.undoBid.width = () => 100
         this.undoBid.height = () => 30
         this.undoBid.x = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 - this.undoBid.width() / 2
-        this.undoBid.y = () => this.client.cachedHeight - 210 - 15
+        this.undoBid.y = () => this.client.cachedHeight - 210 - 80
         this.undoBid.container = () => document.getElementById('inGameDiv')
         this.undoBid.isShown = () => this.client.state.paintUndoBid() && this.bidButtons.length == 0
 
@@ -864,17 +853,6 @@ class OhHellCanvas extends CanvasBase {
         } else if (this.bidButtons.length > 0 && !paintBidInteractables) {
             this.removeBidInteractables()
         }
-
-        if (this.client.state.checkIfShouldBidPreselected()) {
-            let bid = this.client.state.baseState.preselectedBid
-            if (bid !== undefined) {
-                if (bid != this.client.state.cannotBid) {
-                    this.client.state.makeBid(bid)
-                    this.removeBidInteractables()
-                }
-                this.client.state.baseState.preselectedBid = undefined
-            }
-        }
     }
 
     makeBidInteractables() {
@@ -893,16 +871,16 @@ class OhHellCanvas extends CanvasBase {
 
             let wrappedButton = new WrappedDOMElement(button);
             wrappedButton.x = () => (this.client.cachedWidth - baseState.scoreWidth) / 2 + i * 40 - myPlayer.hand.length * 40 / 2 - 15
-            wrappedButton.y = () => this.client.cachedHeight - 210 - 15
+            wrappedButton.y = () => this.client.cachedHeight - 210 - 80
             wrappedButton.width = () => 30
             wrappedButton.height = () => 30
             wrappedButton.container = () => document.getElementById('inGameDiv')
-            wrappedButton.isEnabled = () => i != this.client.state.cannotBid
+            wrappedButton.isEnabled = () => !baseState.isItMyTurn() || i != this.client.state.cannotBid
 
             wrappedButton.currentState = { 'name': 'none', 'classes': [] }
             wrappedButton.nextState = undefined
             wrappedButton.update = () => {
-                if (baseState.isItMyTurn()) {
+                if (baseState.preselected.empty() && baseState.isItMyTurn()) {
                     let teamBid = 0
                     if (serverData.options.teams) {
                         teamBid = serverData.teams[myPlayer.team].members.map(i => serverData.players[i].bidded ? serverData.players[i].bid : 0).reduce((a, b) => a + b, 0)
@@ -918,7 +896,7 @@ class OhHellCanvas extends CanvasBase {
                     } else {
                         wrappedButton.nextState = { 'name': 'active', 'classes': ['bg-white', 'hover:bg-gray-300', 'border-solid'] }
                     }
-                } else if (baseState.preselectedBid == i) {
+                } else if (wrappedButton.preselection !== undefined) {
                     wrappedButton.nextState = { 'name': 'preselected', 'classes': ['bg-white', 'hover:bg-gray-300', 'border-dashed'] }
                 } else {
                     wrappedButton.nextState = { 'name': 'preselectable', 'classes': ['hover:bg-gray-400', 'border-dashed'] }
@@ -937,20 +915,25 @@ class OhHellCanvas extends CanvasBase {
                 }
             }
 
+            wrappedButton.preselectX = () => wrappedButton.x() + wrappedButton.width() / 2
+            wrappedButton.preselectY = () => wrappedButton.y() - wrappedButton.height() / 2 - 5
+            wrappedButton.preselectCheck = () => this.client.state.checkIfShouldBidPreselected()
+            wrappedButton.preselectPass = () => i != this.client.state.cannotBid
+            wrappedButton.preselectAction = () => {
+                this.client.state.makeBid(i)
+                this.removeBidInteractables()
+            }
+
             button.addEventListener('click', () => {
                 if (!wrappedButton.currentState) {
                     return
                 }
 
-                if (wrappedButton.currentState.name == 'preselected') {
-                    baseState.preselectedBid = undefined
-                }
-                if (wrappedButton.currentState.name == 'preselectable') {
-                    baseState.preselectedBid = i
-                }
-                if (wrappedButton.currentState.name == 'active') {
-                    this.client.state.makeBid(i)
-                    this.removeBidInteractables()
+                if (wrappedButton.preselection == undefined) {
+                    baseState.preselected.clear(0)
+                    baseState.preselected.push(wrappedButton)
+                } else {
+                    baseState.preselected.clear(0)
                 }
             })
 

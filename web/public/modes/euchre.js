@@ -104,7 +104,7 @@ export class ClientStateEuchreTrump extends ClientStateEuchre {
 
     enter(data) {
         super.enter(data)
-        this.baseState.clearPreselected(0)
+        this.baseState.preselected.clear(0)
         this.baseState.trumpTimer = 0
     }
 
@@ -145,9 +145,10 @@ export class ClientStateEuchreTrump extends ClientStateEuchre {
     paintNamePlates() { return true }
     highlightPlayer(player) { return player.index == this.baseState.serverData.turn }
     enablePoking(player) { return this.highlightPlayer(player) }
-    cardEnabled(card) { return false }
+    cardEnabled(card) { return this.baseState.myPlayer.bidded || !this.isItMyTurn() }
     paintHandInteractables() { return true }
-    checkIfShouldPlayPreselected() { return false }
+    checkIfShouldPlayPreselected() { return this.isItMyTurn() }
+    canPlayCard(card) { return false }
     paintUpCard() { return true }
     upCardIsDown() { return this.baseState.serverData.phase == 1 }
     paintTrumpInteractables() { return this.isItMyTurn() }
@@ -198,6 +199,7 @@ export class ClientStateEuchreDiscard extends ClientStateEuchre {
 
     enter(data) {
         super.enter(data)
+        this.discarded = false
         this.pickedUp = false
         this.animatePickUp(0)
     }
@@ -219,24 +221,18 @@ export class ClientStateEuchreDiscard extends ClientStateEuchre {
     enablePoking(player) { return player.index == this.dealer() }
     cardEnabled(card) { return true }
     paintHandInteractables() { return true }
-    checkIfShouldPlayPreselected() { return false }
+    checkIfShouldPlayPreselected() { return this.isItMyTurn() && !this.discarded }
     paintUpCard() { return true }
     upCardIsDown() { return this.pickedUp }
-    cardClicked(card) {
-        if (this.isItMyTurn()) {
-            this.discard(card.getCard())
-        } else if (card.preselection == -1) {
-            card.preselection = this.baseState.preselected.length
-            this.baseState.preselected.push(card)
-        } else {
-            this.baseState.clearPreselected(card.preselection)
-        }
-    }
     upCardIsDrawn() { return this.baseState.pickUpTimer == 1 }
     paintScoreSheet() { return true }
 
-    discard(card) {
-        this.client.emit('discard', card)
+    canPlayCard(card) {
+        return true
+    }
+    playCard(canvasCard) {
+        this.discarded = true
+        this.client.emit('discard', canvasCard.getCard())
     }
 }
 
