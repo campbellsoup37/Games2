@@ -438,9 +438,9 @@ class EuchreCanvas extends CanvasBase {
             }
         }
         this.scoreSheet = new EuchreScoreSheet()
-        this.scoreSheet.x = () => this.client.cachedWidth - (this.client.state.baseState.scoreWidth - this.scoreSheet.scoreMargin)
+        this.scoreSheet.x = () => this.client.cachedWidth - (this.client.state.baseState.getScoreWidth() - this.scoreSheet.scoreMargin)
         this.scoreSheet.y = () => this.scoreSheet.scoreMargin
-        this.scoreSheet.width = () => this.client.state.baseState.scoreWidth - 2 * this.scoreSheet.scoreMargin
+        this.scoreSheet.width = () => this.client.state.baseState.getScoreWidth() - 2 * this.scoreSheet.scoreMargin
         this.scoreSheet.height = () => this.chatArea.y() - 2 * this.scoreSheet.scoreMargin
         this.scoreSheet.container = () => this.client.state.scoreSheetContainer()
         this.scoreSheet.isShown = () => this.client.state.paintScoreSheet()
@@ -477,7 +477,7 @@ class EuchreCanvas extends CanvasBase {
         this.despacito = new EuchreDespacito()
         this.despacito.width = () => 640
         this.despacito.height = () => 480
-        this.despacito.x = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth - this.despacito.width()) / 2
+        this.despacito.x = () => (this.client.cachedWidth - this.client.state.baseState.getScoreWidth() - this.despacito.width()) / 2
         this.despacito.y = () => (this.client.cachedHeight - this.despacito.height() ) / 2
         this.despacito.isShown = () => this.client.state.paintDespacito()
         this.despacito.container = () => document.getElementById('inGameDiv')
@@ -558,7 +558,7 @@ class EuchreCanvas extends CanvasBase {
                 }
 
                 let iRelToMe = player.index - this.client.state.baseState.myPlayer.index
-                let startX = (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 - 100 * Math.sin(2 * Math.PI * iRelToMe / serverData.players.length);
+                let startX = (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 - 100 * Math.sin(2 * Math.PI * iRelToMe / serverData.players.length);
                 let startY = this.client.cachedHeight / 2 - 50 + 100 * Math.cos(2 * Math.PI * iRelToMe / serverData.players.length);
                 let endX = player.getTrumpX()
                 let endY = player.getTrumpY()
@@ -611,7 +611,7 @@ class EuchreCanvas extends CanvasBase {
         let offset = -totalWidth / 2
         for (let button of this.trumpButtons) {
             let copy = offset
-            button.x = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 + copy
+            button.x = () => (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 + copy
             offset += button.width() + 10
         }
     }

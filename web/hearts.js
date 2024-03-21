@@ -163,14 +163,13 @@ class HeartsCore extends core.Core {
 
     transitionFromStart() {
         let cardsToRemove = [];
+        this.totalPoints = 26
         switch (this.players.size()) {
             case 3:
                 cardsToRemove = [new card.Card(2, 0)];
-                this.totalPoints = 26;
                 break;
             case 5:
                 cardsToRemove = [new card.Card(2, 0), new card.Card(2, 1)];
-                this.totalPoints = 26;
                 break;
             case 6:
                 cardsToRemove = [new card.Card(2, 0), new card.Card(2, 1), new card.Card(2, 2), new card.Card(2, 3)];
@@ -178,7 +177,6 @@ class HeartsCore extends core.Core {
                 break;
             case 7:
                 cardsToRemove = [new card.Card(2, 0), new card.Card(2, 1), new card.Card(2, 2)];
-                this.totalPoints = 26;
                 break;
             case 8:
                 cardsToRemove = [new card.Card(2, 0), new card.Card(2, 1), new card.Card(2, 2), new card.Card(2, 3)];

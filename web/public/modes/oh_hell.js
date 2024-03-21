@@ -372,9 +372,9 @@ class OhHellCanvas extends CanvasBase {
             }
         }
         this.scoreSheet = new OhHellScoreSheet('ig', this);
-        this.scoreSheet.x = () => this.client.cachedWidth - (this.client.state.baseState.scoreWidth - this.scoreSheet.scoreMargin)
+        this.scoreSheet.x = () => this.client.cachedWidth - (this.client.state.baseState.getScoreWidth() - this.scoreSheet.scoreMargin)
         this.scoreSheet.y = () => this.scoreSheet.scoreMargin
-        this.scoreSheet.width = () => this.client.state.baseState.scoreWidth - 2 * this.scoreSheet.scoreMargin
+        this.scoreSheet.width = () => this.client.state.baseState.getScoreWidth() - 2 * this.scoreSheet.scoreMargin
         this.scoreSheet.getPlayers = () => this.scoreSheetPlayers();
         this.scoreSheet.getTeams = () => this.scoreSheetTeams();
         this.scoreSheet.getRounds = () => this.scoreSheetRounds();
@@ -700,7 +700,7 @@ class OhHellCanvas extends CanvasBase {
         );
         showCardButton.addEventListener('click', () => this.client.state.baseState.showOneCard = true);
         this.showCard = new WrappedDOMElement(showCardButton);
-        this.showCard.x = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 - 40;
+        this.showCard.x = () => (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 - 40;
         this.showCard.y = () => this.client.cachedHeight - this.handYOffset - this.showCard.height() / 2;
         this.showCard.width = () => 80;
         this.showCard.height = () => 30;
@@ -715,7 +715,7 @@ class OhHellCanvas extends CanvasBase {
         );
         showSpreadsheetButton.addEventListener('click', () => this.client.state.toggleShowSpreadsheet());
         this.showSpreadsheet = new WrappedDOMElement(showSpreadsheetButton);
-        this.showSpreadsheet.x = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 - 300;
+        this.showSpreadsheet.x = () => (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 - 300;
         this.showSpreadsheet.y = () => this.client.cachedHeight - (this.showSpreadsheet.height() + 10);
         this.showSpreadsheet.width = () => 150;
         this.showSpreadsheet.height = () => 32;
@@ -734,7 +734,7 @@ class OhHellCanvas extends CanvasBase {
                 this.rowHeight = 15;
             }
 
-            x() { return (thisCanvas.client.cachedWidth - thisCanvas.client.state.baseState.scoreWidth) / 2 - 200; }
+            x() { return (thisCanvas.client.cachedWidth - thisCanvas.client.state.baseState.getScoreWidth()) / 2 - 200; }
             y() { return thisCanvas.client.cachedHeight / 2 - this.height() / 2; }
             width() { return 400; }
             height() { return 2 * this.margin + this.rowHeight * (1 + thisCanvas.client.state.baseState.serverData.players.length); }
@@ -790,7 +790,7 @@ class OhHellCanvas extends CanvasBase {
         this.undoBid = new WrappedDOMElement(undoBidButton)
         this.undoBid.width = () => 100
         this.undoBid.height = () => 30
-        this.undoBid.x = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 - this.undoBid.width() / 2
+        this.undoBid.x = () => (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 - this.undoBid.width() / 2
         this.undoBid.y = () => this.client.cachedHeight - 210 - 80
         this.undoBid.container = () => document.getElementById('inGameDiv')
         this.undoBid.isShown = () => this.client.state.paintUndoBid() && this.bidButtons.length == 0
@@ -870,7 +870,7 @@ class OhHellCanvas extends CanvasBase {
             );
 
             let wrappedButton = new WrappedDOMElement(button);
-            wrappedButton.x = () => (this.client.cachedWidth - baseState.scoreWidth) / 2 + i * 40 - myPlayer.hand.length * 40 / 2 - 15
+            wrappedButton.x = () => (this.client.cachedWidth - baseState.getScoreWidth()) / 2 + i * 40 - myPlayer.hand.length * 40 / 2 - 15
             wrappedButton.y = () => this.client.cachedHeight - 210 - 80
             wrappedButton.width = () => 30
             wrappedButton.height = () => 30

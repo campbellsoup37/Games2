@@ -172,6 +172,14 @@ class Player {
         this.passReady(cards, delay);
     }
 
+    startDecision(data) {
+        if (!this.kibitzer) {
+            this.decision = data;
+            this.decisionAsync(data);
+            this.commandDecision(data);
+        }
+    }
+
     async decisionAsync(data, delay) {
         let choice = await this.strategyModule.makeDecision(data);
         this.decisionReady(choice, delay);

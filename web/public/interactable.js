@@ -418,7 +418,7 @@ export class PlayerNamePlate extends CanvasInteractable {
         // bid chip
         if (this.player.bidded) {
             let iRelToMe = this.player.index - this.client.state.baseState.myPlayer.index
-            let startX = (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 - 100 * Math.sin(2 * Math.PI * iRelToMe / serverData.players.length);
+            let startX = (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 - 100 * Math.sin(2 * Math.PI * iRelToMe / serverData.players.length);
             let startY = this.client.cachedHeight / 2 - 50 + 100 * Math.cos(2 * Math.PI * iRelToMe / serverData.players.length);
             let endX = this.x() + 10;
             let endY = this.y() + this.height() / 2;

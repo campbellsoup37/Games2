@@ -255,9 +255,9 @@ class HeartsCanvas extends CanvasBase {
             }
         }
         this.scoreSheet = new HeartsScoreSheet('ig', this);
-        this.scoreSheet.x = () => this.client.cachedWidth - (this.client.state.baseState.scoreWidth - this.scoreSheet.scoreMargin)
+        this.scoreSheet.x = () => this.client.cachedWidth - (this.client.state.baseState.getScoreWidth() - this.scoreSheet.scoreMargin)
         this.scoreSheet.y = () => this.scoreSheet.scoreMargin
-        this.scoreSheet.width = () => this.client.state.baseState.scoreWidth - 2 * this.scoreSheet.scoreMargin
+        this.scoreSheet.width = () => this.client.state.baseState.getScoreWidth() - 2 * this.scoreSheet.scoreMargin
         this.scoreSheet.getPlayers = () => this.scoreSheetPlayers();
         this.scoreSheet.getTeams = () => this.scoreSheetTeams();
         this.scoreSheet.getRounds = () => this.scoreSheetRounds();
@@ -274,7 +274,7 @@ class HeartsCanvas extends CanvasBase {
         passB.addEventListener('click', () => this.client.state.makePass(this.client.state.pass.list));
         this.passButton = new WrappedDOMElement(passB);
         this.passButton.x = () =>
-            (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 - (this.client.state.baseState.serverData.options.oregon ? 100 : 45);
+            (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 - (this.client.state.baseState.serverData.options.oregon ? 100 : 45);
         this.passButton.y = () => this.client.cachedHeight - 310;
         this.passButton.width = () => 90;
         this.passButton.height = () => 30;
@@ -291,7 +291,7 @@ class HeartsCanvas extends CanvasBase {
         );
         abstainB.addEventListener('click', () => this.client.state.makePass([]));
         this.abstainButton = new WrappedDOMElement(abstainB);
-        this.abstainButton.x = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 + 10;
+        this.abstainButton.x = () => (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 + 10;
         this.abstainButton.y = () => this.client.cachedHeight - 310;
         this.abstainButton.width = () => 90;
         this.abstainButton.height = () => 30;

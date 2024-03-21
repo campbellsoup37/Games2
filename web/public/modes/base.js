@@ -29,6 +29,7 @@ export class ClientStateGameBase extends ClientState {
         this.baseState = this.key == this.baseKey ? this : this.client.stateCache[this.baseKey]
         this.serverData = Object()
         this.scoreWidth = 0
+        this.scoreMinimized = true
         this.sortScoresDescending = true
         this.myPlayer = undefined
         this.message = ''
@@ -189,7 +190,7 @@ export class ClientStateGameBase extends ClientState {
     paintPostGame() { return false }
     paintPreselected() { return false }
     paintMessage() { return this.baseState.message != '' }
-    chatWidth() { return this.baseState.scoreWidth - 20 }
+    chatWidth() { return this.baseState.getScoreWidth() - 20 }
     nameplatesAboveChat() { return false }
     paintNamePlates() { return false }
     enablePoking(player) { return false }
@@ -207,6 +208,14 @@ export class ClientStateGameBase extends ClientState {
     paintBidAndDealerChips() { return false }
     hideCard(card) { return false }
     enableClaimButton() { return false }
+    isScreenSmall() { return this.client.cachedWidth < 1200 }
+    isScoreMinimized() { return this.isScreenSmall() && this.baseState.scoreMinimized }
+    getScoreWidth() {
+        if (this.isScreenSmall()) {
+            return 0
+        }
+        return this.baseState.scoreWidth
+    }
 
     isItMyTurn() { return this.baseState.myPlayer.index == this.baseState.serverData.turn && !this.baseState.myPlayer.kibitzer }
 
@@ -672,7 +681,7 @@ export class CanvasBase extends OhcCanvas {
 
                         let x0 = Math.min(
                             this.xCenter() + 50,
-                            thisCanvas.client.cachedWidth - thisCanvas.client.state.baseState.scoreWidth
+                            thisCanvas.client.cachedWidth - thisCanvas.client.state.baseState.getScoreWidth()
                                 - thisCanvas.lastTrickSeparation * (players.length - 1) - thisCanvas.client.vars.deckImg.width / 2 - 10
                         );
                         let y0 = Math.max(this.yCenter(), thisCanvas.client.vars.deckImg.height / 2 + 10);
@@ -806,6 +815,7 @@ export class CanvasBase extends OhcCanvas {
         this.chatField.width = () => this.client.state.chatWidth()
         this.chatField.height = () => 32;
         this.chatField.container = () => this.client.state.div
+        this.chatField.isShown = () => !this.client.state.baseState.isScoreMinimized()
 
         let chatA = document.createElement('div');
         chatA.readOnly = true;
@@ -836,10 +846,11 @@ export class CanvasBase extends OhcCanvas {
         this.chatArea.width = () => this.client.state.chatWidth()
         this.chatArea.height = () => this.client.cachedHeight - this.chatArea.y() - this.chatField.height() - 15;
         this.chatArea.container = () => this.client.state.div
+        this.chatArea.isShown = () => !this.client.state.baseState.isScoreMinimized()
 
         this.divider = new CanvasInteractable();
         this.divider.draggable = true;
-        this.divider.x = () => this.client.cachedWidth - this.client.state.baseState.scoreWidth - 2;
+        this.divider.x = () => this.client.cachedWidth - this.client.state.baseState.getScoreWidth() - 2;
         this.divider.y = () => 0;
         this.divider.width = () => 4;
         this.divider.height = () => this.client.cachedHeight;
@@ -899,7 +910,7 @@ export class CanvasBase extends OhcCanvas {
     //}
 
     backgroundCenterX() {
-        return (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2;
+        return (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2;
     }
 
     scoreSheetPlayers() {
@@ -971,9 +982,9 @@ export class CanvasBase extends OhcCanvas {
     }
 
     fixPostGameWidth() {
-        let leftWidth = this.client.cachedWidth - this.client.state.baseState.scoreWidth;
+        let leftWidth = this.client.cachedWidth - this.client.state.baseState.getScoreWidth();
         igPgLeft.style.width = leftWidth + 'px'
-        igPgRight.style.width = this.client.state.baseState.scoreWidth + 'px'
+        igPgRight.style.width = this.client.state.baseState.getScoreWidth() + 'px'
     }
 
     paintPlayers() {
@@ -1028,12 +1039,12 @@ export class CanvasBase extends OhcCanvas {
                 let startY = player.getY();
 
                 if (player.id == myPlayer.id && this.client.state.baseState.cardJustPlayed !== undefined) {
-                    startX = (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 + this.client.state.baseState.cardJustPlayed * this.cardSeparation
+                    startX = (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 + this.client.state.baseState.cardJustPlayed * this.cardSeparation
                         - (myPlayer.hand.length) * this.cardSeparation / 2;
                     startY = this.client.cachedHeight - this.handYOffset;
                 }
 
-                let endX = (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2
+                let endX = (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2
                     - player.trickRad * Math.sin(2 * Math.PI * iRelToMe / N);
                 let endY = this.client.cachedHeight / 2 - 50
                     + player.trickRad * Math.cos(2 * Math.PI * iRelToMe / N);
@@ -1072,7 +1083,7 @@ export class CanvasBase extends OhcCanvas {
 
             let x = takenX + thisCanvas.takenXSeparation * j;
             let y = takenY + thisCanvas.takenYSeparation * j;
-            x = t * x + (1 - t) * (thisCanvas.client.cachedWidth - thisCanvas.client.state.baseState.scoreWidth) / 2;
+            x = t * x + (1 - t) * (thisCanvas.client.cachedWidth - thisCanvas.client.state.baseState.getScoreWidth()) / 2;
             y = t * y + (1 - t) * thisCanvas.client.cachedHeight / 2;
 
             drawCard(thisCanvas.client.ctx, new Card(), x, y, smallCardScale, thisCanvas.client.vars.deckImgSmall, false, -1, undefined);
@@ -1096,7 +1107,7 @@ export class CanvasBase extends OhcCanvas {
             return
         }
 
-        let x = (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2;
+        let x = (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2;
         let y = this.client.cachedHeight / 2;
         let dims = getStringDimensions(this.client.state.baseState.message, font.basic);
         this.client.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
@@ -1125,7 +1136,7 @@ export class CanvasBase extends OhcCanvas {
             this.frameTimes[this.framePointer] = time;
 
             let fps = (1000 * 100 / total).toFixed(2);
-            drawText(this.client.ctx, 'FPS: ' + fps, this.client.cachedWidth - this.client.state.baseState.scoreWidth - 20, 20, 2, 1, font.bold, '#fe0000');
+            drawText(this.client.ctx, 'FPS: ' + fps, this.client.cachedWidth - this.client.state.baseState.getScoreWidth() - 20, 20, 2, 1, font.bold, '#fe0000');
         } else {
             this.frameTimes.push(time);
         }
@@ -1137,7 +1148,7 @@ export class CanvasBase extends OhcCanvas {
             return;
         }
 
-        drawText(this.client.ctx, 'Ping: ' + this.client.rtt + 'ms', this.client.cachedWidth - this.client.state.baseState.scoreWidth - 20, 40, 2, 1, font.bold, '#fe0000');
+        drawText(this.client.ctx, 'Ping: ' + this.client.rtt + 'ms', this.client.cachedWidth - this.client.state.baseState.getScoreWidth() - 20, 40, 2, 1, font.bold, '#fe0000');
     }
 
     newGameReset() {
@@ -1186,7 +1197,7 @@ export class CanvasBase extends OhcCanvas {
                 player.pov = () => false;
             } else if (index < cut2) {
                 // Top
-                player.getX = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth) * (index - cut1 + 1) / (cut2 - cut1 + 1)
+                player.getX = () => (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) * (index - cut1 + 1) / (cut2 - cut1 + 1)
                 player.getY = () => 85
                 player.getJust = () => 1
                 player.getTakenX = () => player.getX() + 120
@@ -1200,7 +1211,7 @@ export class CanvasBase extends OhcCanvas {
                 player.pov = () => false
             } else if (index < N - 1) {
                 // Right
-                player.getX = () => this.client.cachedWidth - this.client.state.baseState.scoreWidth - 10
+                player.getX = () => this.client.cachedWidth - this.client.state.baseState.getScoreWidth() - 10
                 player.getY = () => this.client.cachedHeight * (index - cut2 + 1) / (N - 1 - cut2 + 1)
                 player.getJust = () => 2
                 player.getTakenX = () => player.getX() - 90
@@ -1214,7 +1225,7 @@ export class CanvasBase extends OhcCanvas {
                 player.pov = () => false
             } else {
                 // Bottom (player)
-                player.getX = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2
+                player.getX = () => (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2
                 player.getY = () => this.client.cachedHeight - 20
                 player.getJust = () => 1
                 player.getTakenX = () => {
@@ -1322,7 +1333,7 @@ export class CanvasBase extends OhcCanvas {
             let card = new CanvasCard(myPlayer.hand[i], 1, this.client.vars.deckImg, this.client.ctx);
             card.index = () => myPlayer.hand.indexOf(card.getCard())
             card.xCenter = () =>
-                (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 + card.index() * this.cardSeparation
+                (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 + card.index() * this.cardSeparation
                 - (myPlayer.hand.length - 1) * this.cardSeparation / 2
             card.yCenter = () =>
                 this.client.cachedHeight - this.handYOffset - (this.client.state.cardSelected(card) ? this.selectedCardYOffset : 0)
@@ -1407,7 +1418,7 @@ export class CanvasBase extends OhcCanvas {
 
             let wrappedButton = new WrappedDOMElement(button);
             let xcopy = x;
-            wrappedButton.x = () => (this.client.cachedWidth - this.client.state.baseState.scoreWidth) / 2 + xcopy;
+            wrappedButton.x = () => (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 + xcopy;
             wrappedButton.y = () => this.client.cachedHeight / 2 + 50;
             wrappedButton.width = () => widths[i];
             wrappedButton.height = () => 30;
