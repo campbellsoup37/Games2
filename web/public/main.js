@@ -139,7 +139,7 @@ class Client {
         this.vars.cardSound = new Audio('./resources/Card play.wav')
 
         this.vars.pingTime = 5000
-        this.vars.disconnectTime = 30000
+        this.vars.disconnectTime = 60000
 
         this.vars.animationTime = 150
         this.vars.bidStayTime = 1500
