@@ -266,7 +266,7 @@ class OhHellCore extends core.Core {
             let path = `./models/N${this.players.size()}/D${this.options.D}/T${T}/ss.txt`
             if (fs.existsSync(path)) {
                 this.spreadsheet = fs.readFileSync(path, 'utf8')
-                this.spreadsheet = this.spreadsheet.split('\r\n')
+                this.spreadsheet = this.spreadsheet.split('\n')
             }
         } catch (err) {
             this.spreadsheet = undefined
