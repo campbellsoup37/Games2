@@ -30,6 +30,7 @@ class Player {
             lastTrick: this.lastTrick,
             decision: visible ? this.decision : undefined,
             bids: this.bids,
+            takens: this.takens,
             scores: this.scores,
             pass: this.pass ? this.pass.map(c => visible ? c : new card.Card()) : [],
             passed: this.passed
@@ -1260,6 +1261,7 @@ class Core {
         this.addUpdateDiff({
             roundNumber: this.roundNumber,
             players: this.players.players.map(p => ({
+                takens: { [p.takens.length - 1]: p.takens[p.takens.length - 1] },
                 score: p.score,
                 scores: { [p.scores.length - 1]: p.score }
             }))

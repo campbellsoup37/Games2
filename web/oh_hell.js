@@ -39,6 +39,7 @@ class OhHellPlayer extends core.Player {
             lastTrick: this.lastTrick,
             decision: visible ? this.decision : undefined,
             bids: this.bids,
+            takens: this.takens,
             scores: this.scores
         };
     }

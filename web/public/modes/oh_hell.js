@@ -257,7 +257,6 @@ class OhHellCanvas extends CanvasBase {
             return
         }
         super.initialize()
-        console.log(this.interactables)
 
         // listeners
         this.robotsSpinner = document.getElementById("igRobots")
@@ -289,7 +288,7 @@ class OhHellCanvas extends CanvasBase {
                         font.basic, 'black'
                     );
                     drawText(ctx,
-                        this.playersUnsorted[round.dealer].name.substring(0, 1),
+                        Array.from(this.playersUnsorted[round.dealer].name)[0],
                         2 * this.margin + 1.5 * this.dealerHWidth,
                         this.scoreVSpacing * (i + 0.5),
                         1, 1,
@@ -330,15 +329,13 @@ class OhHellCanvas extends CanvasBase {
                         let chipSpacing = j < scoresList.length ? this.margin + b : wid;
                         for (const p of members) {
                             if (p.bids && j < p.bids.length) {
-                                ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
-
-                                // if (p.takens === undefined || p.takens.length < p.bid.length) {
-                                //     ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
-                                // } else if (p.takens[j] == p.bids[j]) {
-                                //     ctx.fillStyle = 'rgb(255, 175, 175)';
-                                // } else {
-                                //     ctx.fillStyle = 'rgb(125, 255, 125)';
-                                // }
+                                if (p.takens === undefined || j >= p.takens.length) {
+                                    ctx.fillStyle = 'rgba(200, 200, 200, 0.7)'
+                                } else if (members.reduce((a, m) => a + m.bids[j] - m.takens[j], 0) == 0) {
+                                    ctx.fillStyle = 'rgb(125, 255, 125, 0.5)'
+                                } else {
+                                    ctx.fillStyle = 'rgb(255, 175, 175, 0.5)'
+                                }
 
                                 drawOval(ctx,
                                     currentX + 1 + fullWid - chipSpacing * k - chipStart,

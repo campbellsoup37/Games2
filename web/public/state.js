@@ -84,6 +84,12 @@ export class ClientState {
         let cardBack = document.getElementById('prefCardBack')
         cardBack.addEventListener('change', () => { setCookie('cardBack', cardBack.value, 365) })
 
+        let suitSeparation = document.getElementById('prefSuitSeparation')
+        suitSeparation.addEventListener('change', () => {
+            this.client.vars.preferences.suitSeparation = suitSeparation.value
+            setCookie('suitSeparation', suitSeparation.value, 365)
+        })
+
         let soundVolume = document.getElementById('prefSoundVolume')
         soundVolume.addEventListener('change', () => { setCookie('soundVolume', soundVolume.value, 365) })
 

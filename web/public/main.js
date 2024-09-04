@@ -109,7 +109,8 @@ class Client {
             showFps: false,
             teamColorTrick: true,
             cardBack: 1,
-            soundVolume: 50
+            soundVolume: 50,
+            suitSeparation: 0
         }
         function decode(val) {
             if (!isNaN(val)) {
@@ -134,6 +135,7 @@ class Client {
         document.getElementById('prefCardBack').value = this.vars.preferences.cardBack
         document.getElementById('prefSoundVolume').value = this.vars.preferences.soundVolume
         document.getElementById('prefShowFps').checked = this.vars.preferences.showFps
+        document.getElementById('prefSuitSeparation').value = this.vars.preferences.suitSeparation
 
         this.vars.pokeSound = new Audio('./resources/shortpoke.wav')
         this.vars.cardSound = new Audio('./resources/Card play.wav')
@@ -146,6 +148,7 @@ class Client {
         this.vars.trickStayTime = 1500
         this.vars.phaseChangeTime = 1000
         this.vars.messageTime = 2000
+        this.vars.messageTimeLong = 7000
         this.vars.robotDelay = 500
     }
 

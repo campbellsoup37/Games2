@@ -483,6 +483,13 @@ class EuchreCore extends core.Core {
                 this.addUpdateDiff({ state: this.state, turn: this.turn }, { canPlay: this.canPlay })
                 this.flushDiffs([this.players.players[this.turn]])
             } else {
+                for (const player of this.players.players) {
+                    this.addUpdateDiff({ players: this.players.players.map(p => p !== player ? ({ hand: [] }) : ({})) })
+                    this.flushDiffs([player])
+                    this.addUpdateDiff({ players: this.players.players.map(p => p !== player ? ({ hand: p.hand }) : ({})) })
+                    this.flushDiffs([player])
+                }
+
                 this.claims.push(-1);
                 this.finishRound();
             }

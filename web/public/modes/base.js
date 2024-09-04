@@ -55,7 +55,7 @@ export class ClientStateGameBase extends ClientState {
     }
 
     updateServerData(data) {
-        console.log('server sent ', data)
+        //console.log('server sent ', data)
         let specialUpdateHandling = []
 
         function update(A, B, depth) {
@@ -131,7 +131,7 @@ export class ClientStateGameBase extends ClientState {
             }
         }
 
-        console.log('current state', this.baseState.serverData)
+        //console.log('current state', this.baseState.serverData)
     }
 
     updateServerData_state(type, diff) {
@@ -251,6 +251,10 @@ export class ClientStateGameBase extends ClientState {
         this.showMessage('Claim ' + (data.accepted ? 'accepted.' : 'rejected.'))
     }
 
+    renameTeam(team, name) {
+        this.client.emit('renameTeam', { team: team, name: name })
+    }
+
     // client internal
     leaveGame() {
         this.client.emit('leavegame')
@@ -344,10 +348,6 @@ export function createClientStatePreGame(base) {
 
         reteam(index, team) {
             this.client.emit('reteam', { index: index, team: team })
-        }
-
-        renameTeam(team, name) {
-            this.client.emit('renameTeam', { team: team, name: name })
         }
 
         scrambleTeams() {
@@ -799,6 +799,13 @@ export class CanvasBase extends OhcCanvas {
                         }
                         let num = Math.floor(Math.random() * (max - min + 1) + min)
                         text = `<b style='color:#AA5500'>${name} rolls ${num} (${min}-${max})</font>`
+                    } else if (args[0] == '/renameteam') {
+                        let team = this.client.state.baseState.myPlayer.team
+                        if (args.length < 2 || team === undefined || this.client.state.renameTeam === undefined) {
+                            return
+                        }
+                        this.client.state.renameTeam(team, args[1])
+                        text = `<b style='color:#AA5500'>${name} renamed their team to "${args[1]}"</font>`
                     } else {
                         return
                     }
@@ -1332,9 +1339,13 @@ export class CanvasBase extends OhcCanvas {
         for (let i = 0; i < myPlayer.hand.length; i++) {
             let card = new CanvasCard(myPlayer.hand[i], 1, this.client.vars.deckImg, this.client.ctx);
             card.index = () => myPlayer.hand.indexOf(card.getCard())
+            card.suitIndex = () => Array.from(new Set(myPlayer.hand.map(c => c.suit))).indexOf(card.getCard().suit)
+            card.suitCount = () => Array.from(new Set(myPlayer.hand.map(c => c.suit))).length
             card.xCenter = () =>
                 (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 + card.index() * this.cardSeparation
+                + card.suitIndex() * document.getElementById('prefSuitSeparation').value
                 - (myPlayer.hand.length - 1) * this.cardSeparation / 2
+                - (card.suitCount() - 1) * document.getElementById('prefSuitSeparation').value / 2
             card.yCenter = () =>
                 this.client.cachedHeight - this.handYOffset - (this.client.state.cardSelected(card) ? this.selectedCardYOffset : 0)
             card.yPaintOffset = () => (card.isMoused() ? -10 : 0)

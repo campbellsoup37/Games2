@@ -39,7 +39,7 @@ export class ClientStateEuchre extends ClientStateGameBase {
 
     chat(data) {
         super.chat(data)
-        if (data.text == 'despacito') {
+        if (data.text == `${data.sender}: despacito`) {
             this.playDespacito()
         }
     }
@@ -245,18 +245,30 @@ export class ClientStateEuchrePlaying extends createClientStatePlaying(ClientSta
     paintScoreSheet() { return true }
 
     showroundmessage() {
-        let te = new TimerEntry(this.client.vars.messageTime)
+        let te = new TimerEntry(this.client.vars.messageTimeLong)
         te.onFirstAction = () => {
-            let result = this.baseState.serverData.roundResult
-            switch (result) {
+            let weDeclared = this.baseState.serverData.declarer % 2 == this.baseState.myPlayer.index % 2
+            switch (this.baseState.serverData.roundResult) {
             case 0:
-                this.baseState.message = 'Euchred!'
+                if (weDeclared) {
+                    this.baseState.message = 'You got euchred!'
+                } else {
+                    this.baseState.message = 'You euchred them!'
+                }
                 break
             case 1:
-                this.baseState.message = 'Made it!'
+                if (weDeclared) {
+                    this.baseState.message = 'You made it!'
+                } else {
+                    this.baseState.message = 'They made it!'
+                }
                 break
             case 2:
-                this.baseState.message = 'Made all!'
+                if (weDeclared) {
+                    this.baseState.message = 'You made them all!'
+                } else {
+                    this.baseState.message = 'They made them all!'
+                }
                 break
             }
         }

@@ -114,6 +114,10 @@ export class ScoreSheet extends WrappedDOMElement {
             height
         );
 
+        function substr(s) {
+            return Array.from(s).slice(0, 15).join('')
+        }
+
         let indices = [];
         if (this.options.teams) {
             let teamX = currentX;
@@ -129,7 +133,7 @@ export class ScoreSheet extends WrappedDOMElement {
                     10, colors[team.number]
                 );
                 drawText(ctx,
-                    team.name.substring(0, 15),
+                    substr(team.name),
                     teamX + teamWid / 2,
                     this.margin + this.scoreVSpacing / 2,
                     1, 1,
@@ -151,7 +155,7 @@ export class ScoreSheet extends WrappedDOMElement {
 
             // name
             drawText(ctx,
-                player.name.substring(0, 15),
+                substr(player.name),
                 currentX + wid / 2,
                 height - this.scoreVSpacing / 2 - this.lineV / 2,
                 1, 1,
