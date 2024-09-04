@@ -1466,7 +1466,7 @@ export class CanvasBase extends OhcCanvas {
         for (let word of data.text.split(' ')) {
             let newWord = word
             if (word.match(urlRegex)) {
-                newWord = `<a href=${word} target='_blank'><u><font color='#0000EE'>${word}</font></u></a>`
+                newWord = `<a href=${word} target='_blank'><u><font color='${adjustedStyle('#0000ee')}'>${word}</font></u></a>`
             }
             text += ' ' + newWord
         }
