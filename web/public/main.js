@@ -148,7 +148,7 @@ class Client {
         this.vars.trickStayTime = 1500
         this.vars.phaseChangeTime = 1000
         this.vars.messageTime = 2000
-        this.vars.messageTimeLong = 7000
+        this.vars.messageTimeLong = 5000
         this.vars.robotDelay = 500
     }
 
