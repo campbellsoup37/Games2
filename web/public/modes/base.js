@@ -443,7 +443,11 @@ export function createClientStatePlaying(base) {
         }
 
         playCard(canvasCard) {
-            this.baseState.cardJustPlayed = canvasCard.index()
+            this.baseState.cardJustPlayed = {
+                index: canvasCard.index(),
+                startX: canvasCard.xCenter(),
+                startY: canvasCard.yCenter()
+            }
             let card = canvasCard.getCard()
             this.canPlay = undefined
             this.client.emit('play', { card: { num: card.num, suit: card.suit }, index: canvasCard.index() })
@@ -1046,9 +1050,8 @@ export class CanvasBase extends OhcCanvas {
                 let startY = player.getY();
 
                 if (player.id == myPlayer.id && this.client.state.baseState.cardJustPlayed !== undefined) {
-                    startX = (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2 + this.client.state.baseState.cardJustPlayed * this.cardSeparation
-                        - (myPlayer.hand.length) * this.cardSeparation / 2;
-                    startY = this.client.cachedHeight - this.handYOffset;
+                    startX = this.client.state.baseState.cardJustPlayed.startX
+                    startY = this.client.state.baseState.cardJustPlayed.startY
                 }
 
                 let endX = (this.client.cachedWidth - this.client.state.baseState.getScoreWidth()) / 2
