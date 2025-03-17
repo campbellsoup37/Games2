@@ -1135,6 +1135,8 @@ class Core {
             this.attachStrategyModules()
         }
         catch (err) {
+            log('Error loading strategy modules:')
+            log(err)
             return
         }
         this.randomizePlayerOrder();

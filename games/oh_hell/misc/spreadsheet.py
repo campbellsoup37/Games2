@@ -4,19 +4,20 @@ import os
 import pandas as pd
 import sys
 
-iter = 'done'
+iter = 'base'
 
 # x2 = 7.879 # Confidence p = 0.005
 x2 = 15.13670523 # Confidence p = 0.0001
 # x2 = 19.51142096464506 # Confidence p = 0.00001
 
 for D in [1, 2]:
-    for N in [4, 5, 6, 7, 8, 9, 10]:
+    for N in [11, 12]:
         print(f'D = {D}, N = {N}')
         fname = f'C:/Users/campb/data/oh_hell/{iter}/spreadsheet/N{N}_D{D}.txt'
         output_fname = sys.prefix.replace("\\", "/").rsplit("/", 1)[0] + f'/web/models/N{N}/D{D}/T0/ss.txt'
-        # os.makedirs(fname.rsplit('/', 1)[0], exist_ok=True)
-        # generate_spreadsheet(N, D, x2, fname, False)
+        if not os.path.exists(fname):
+            os.makedirs(fname.rsplit('/', 1)[0], exist_ok=True)
+            generate_spreadsheet(N, D, x2, fname, False)
 
         df = pd.read_csv(fname).dropna().astype(int)
         df['p'] = df.eval('wins / (wins + losses)')
@@ -49,7 +50,8 @@ for D in [1, 2]:
             
         ss.sort_index(inplace=True)
         ss = ss.map(card_names).unstack('bidCode').sum(axis=1)
-
+        
+        os.makedirs(output_fname.rsplit('/', 1)[0], exist_ok=True)
         with open(output_fname, 'w') as f:
             for row in ss:
                 f.write(row + '\n')

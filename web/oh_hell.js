@@ -240,8 +240,11 @@ class OhHellCore extends core.Core {
     }
 
     verifyGameCanStart() {
-        let N = this.players.players.filter(p => p.human).length + this.options.robots;
-        return N >= 2 && N <= 10;
+        let N = this.players.players.filter(p => p.human).length + this.options.robots
+        return (
+            (N >= 2 && N <= 10)
+            || (N >= 11 && N <= 12 && this.options.D == 2)
+        )
     }
 
     sendGameState(player) {
