@@ -243,7 +243,7 @@ class OhHellCore extends core.Core {
         let N = this.players.players.filter(p => p.human).length + this.options.robots
         return (
             (N >= 2 && N <= 10)
-            || (N >= 11 && N <= 12 && this.options.D == 2)
+            || (N >= 11 && N <= 13 && this.options.D == 2)
         )
     }
 
