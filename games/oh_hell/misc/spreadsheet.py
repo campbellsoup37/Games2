@@ -11,13 +11,15 @@ x2 = 15.13670523 # Confidence p = 0.0001
 # x2 = 19.51142096464506 # Confidence p = 0.00001
 
 for D in [1, 2]:
-    for N in [11, 12]:
+    for N in [11, 13]:
         print(f'D = {D}, N = {N}')
         fname = f'C:/Users/campb/data/oh_hell/{iter}/spreadsheet/N{N}_D{D}.txt'
         output_fname = sys.prefix.replace("\\", "/").rsplit("/", 1)[0] + f'/web/models/N{N}/D{D}/T0/ss.txt'
         if not os.path.exists(fname):
             os.makedirs(fname.rsplit('/', 1)[0], exist_ok=True)
             generate_spreadsheet(N, D, x2, fname, False)
+        if os.path.exists(output_fname):
+            continue
 
         df = pd.read_csv(fname).dropna().astype(int)
         df['p'] = df.eval('wins / (wins + losses)')
