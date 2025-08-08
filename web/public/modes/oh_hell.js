@@ -177,8 +177,9 @@ export class ClientStateOhHellBidding extends ClientStateOhHell {
     adjustDivSizes() { this.canvas.fixScoreWidth() }
     paintHotdog() { return this.baseState.serverData.roundNumber < this.baseState.serverData.rounds.length }
     paintTeamInfo() {
-        let data = this.baseState.serverData
-        return data.roundNumber < data.rounds.length && !this.baseState.myPlayer.kibitzer && data.options.teams
+        return false // deprecated
+        //let data = this.baseState.serverData
+        //return data.roundNumber < data.rounds.length && !this.baseState.myPlayer.kibitzer && data.options.teams
     }
     paintTrump() { return this.baseState.serverData.trump !== undefined }
     paintPlayers() { return true }
@@ -191,6 +192,7 @@ export class ClientStateOhHellBidding extends ClientStateOhHell {
     highlightPlayer(player) { return player.index == this.baseState.serverData.turn }
     enablePoking(player) { return this.highlightPlayer(player) }
     paintBidAndDealerChips() { return true }
+    dotsBidTaken(player) { return undefined }
     paintScoreSheet() { return true }
     cardEnabled(card) { return this.baseState.myPlayer.bidded || !this.baseState.preselected.empty() }
     paintShowCardButton() { return this.canvas.cardInteractables && this.canvas.cardInteractables.length > 0 && this.canvas.cardInteractables[0].hidden() }
@@ -210,8 +212,9 @@ export class ClientStateOhHellPlaying extends createClientStatePlaying(ClientSta
 
     paintHotdog() { return this.baseState.serverData.roundNumber < this.baseState.serverData.rounds.length }
     paintTeamInfo() {
-        let data = this.baseState.serverData
-        return data.roundNumber < data.rounds.length && !this.baseState.myPlayer.kibitzer && data.options.teams
+        return false // deprecated
+        //let data = this.baseState.serverData
+        //return data.roundNumber < data.rounds.length && !this.baseState.myPlayer.kibitzer && data.options.teams
     }
     paintTrump() { return this.baseState.serverData.trump !== undefined }
     paintUndoBid() { return !this.baseState.myPlayer.kibitzer && this.baseState.myPlayer.index == this.baseState.serverData.canUndo }
@@ -236,6 +239,13 @@ export class ClientStateOhHellPlaying extends createClientStatePlaying(ClientSta
         } else {
             return 'rgb(255, 175, 175)'
         }
+    }
+    dotsBidTaken(player) {
+        if (this.baseState.serverData.options.teams) {
+            let team = this.baseState.serverData.teams[player.team]
+            return [this.getTeamBid(team), this.getTeamTaken(team)]
+        }
+        return [player.bid, player.taken]
     }
 }
 
@@ -654,7 +664,7 @@ class OhHellCanvas extends CanvasBase {
             height() { return 24; }
             container() { return document.getElementById('inGameDiv'); }
 
-            isShown() { return thisCanvas.client.state.baseState.serverData.options && thisCanvas.client.state.baseState.serverData.options.teams }
+            isShown() { return thisCanvas.client.state.paintTeamInfo() }
 
             paint() {
                 super.paint();

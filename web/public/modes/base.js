@@ -16,6 +16,13 @@ import { ScoreSheet } from '../scoresheet.js'
 
 import { PostGamePage } from '../postgame.js'
 
+function tokenize(text) {
+    let groups = text.match(/"[^"]*"|\S+|\s+/g)
+    groups = groups.map(x => x.trim().replace(/^\"+|\"+$/g, ''))
+    groups = groups.filter(x => x.length > 0)
+    return groups
+}
+
 // states
 
 export class ClientStateGameBase extends ClientState {
@@ -789,7 +796,7 @@ export class CanvasBase extends OhcCanvas {
                 let name = this.client.state.baseState.myPlayer.name
 
                 if (text[0] == '/') {
-                    let args = text.split(' ')
+                    let args = tokenize(text)
                     if (args[0] == '/bitcoin') {
                         text = '<b style="color:green">BITCOIN MODE ENABLED $$</b>'
                     } else if (args[0] == '/roll') {
@@ -1197,13 +1204,15 @@ export class CanvasBase extends OhcCanvas {
                 player.getY = () => this.client.cachedHeight * (cut1 - index) / (cut1 + 1)
                 player.getJust = () => 0
                 player.getTakenX = () => player.getX() + 20
-                player.getTakenY = () => player.getY() + 50
+                player.getTakenY = () => player.getY() + 65
                 player.getPassX = () => player.getX() + 250
                 player.getPassY = () => player.getY()
                 player.getTrumpX = () => player.getX() + this.client.vars.maxWid + 5
                 player.getTrumpY = () => player.getY()
                 player.getUpCardX = () => player.getX() + this.client.vars.maxWid + 10 + this.client.vars.deckImgSmall.width / 2
                 player.getUpCardY = () => player.getY() - 5 - this.client.vars.deckImgSmall.height / 2
+                player.getDotsYOffset = () => 30
+                player.getDotsW = () => 10
                 player.pov = () => false;
             } else if (index < cut2) {
                 // Top
@@ -1218,6 +1227,8 @@ export class CanvasBase extends OhcCanvas {
                 player.getTrumpY = () => player.getY() + 30
                 player.getUpCardX = () => player.getX()
                 player.getUpCardY = () => player.getY() + 40 + this.client.vars.deckImgSmall.height / 2
+                player.getDotsYOffset = () => 30
+                player.getDotsW = () => 10
                 player.pov = () => false
             } else if (index < N - 1) {
                 // Right
@@ -1225,13 +1236,15 @@ export class CanvasBase extends OhcCanvas {
                 player.getY = () => this.client.cachedHeight * (index - cut2 + 1) / (N - 1 - cut2 + 1)
                 player.getJust = () => 2
                 player.getTakenX = () => player.getX() - 90
-                player.getTakenY = () => player.getY() + 50
+                player.getTakenY = () => player.getY() + 65
                 player.getPassX = () => player.getX() - 250
                 player.getPassY = () => player.getY()
                 player.getTrumpX = () => player.getX() - this.client.vars.maxWid - 5
                 player.getTrumpY = () => player.getY()
                 player.getUpCardX = () => player.getX() - this.client.vars.maxWid - 10 - this.client.vars.deckImgSmall.width / 2
                 player.getUpCardY = () => player.getY() - 5 - this.client.vars.deckImgSmall.height / 2
+                player.getDotsYOffset = () => 30
+                player.getDotsW = () => 10
                 player.pov = () => false
             } else {
                 // Bottom (player)
@@ -1256,6 +1269,8 @@ export class CanvasBase extends OhcCanvas {
                 player.getTrumpY = () => player.getY()
                 player.getUpCardX = () => player.getX() + 200
                 player.getUpCardY = () => player.getY() - 60
+                player.getDotsYOffset = () => -240
+                player.getDotsW = () => 20
                 player.pov = () => true
             }
 

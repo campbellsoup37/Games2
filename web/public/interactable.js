@@ -451,6 +451,32 @@ export class PlayerNamePlate extends CanvasInteractable {
             drawOval(ctx, this.x() + this.width() - 19, this.y() + this.height() / 2 - 8, 16, 16);
             drawText(ctx, 'D', this.x() + this.width() - 11, this.y() + this.height() / 2, 1, 1, font.basic, 'black')
         }
+
+        // taken + bid dots
+        let bidTaken = this.client.state.dotsBidTaken(this.player)
+        if (bidTaken !== undefined) {
+            let bid = bidTaken[0]
+            let taken = bidTaken[1]
+            let numDots = Math.max(bid, taken)
+            for (let i = 0; i < numDots; i++) {
+                let w = this.player.getDotsW()
+                let x = this.x() + this.width() / 2 + w * 1.5 * (i - (numDots - 1) / 2)
+                let y = this.y() + this.player.getDotsYOffset()
+
+                if (i >= taken) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'
+                } else if (i >= bid) {
+                    ctx.fillStyle = 'rgb(255, 175, 175)'
+                } else {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+                }
+                ctx.strokeStyle = 'black'
+
+                drawOval(ctx, x - w / 2, y - w / 2, w, w, true)
+                drawOval(ctx, x - w / 2, y - w / 2, w, w, false)
+
+            }
+        }
     }
 
     click() {
